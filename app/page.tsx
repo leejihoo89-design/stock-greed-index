@@ -49,6 +49,7 @@ export default function GreedDashboard() {
   const [currentStock, setCurrentStock] = useState<any>(null);
   const [isQuerying, setIsQuerying] = useState(false);
   const [news, setNews] = useState<any[]>([]);
+  const [sheetGreedIndex, setSheetGreedIndex] = useState<string>('불러오는 중...');
 
   const loadData = async () => {
     try {
@@ -93,6 +94,24 @@ export default function GreedDashboard() {
         });
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const fetchSheetIndex = async () => {
+      try {
+        const res = await fetch('/api/stock-data');
+        const json = await res.json();
+        if (res.ok && json.greedIndex !== undefined) {
+          setSheetGreedIndex(String(json.greedIndex));
+        } else {
+          setSheetGreedIndex('데이터 없음');
+        }
+      } catch (error) {
+        setSheetGreedIndex('오류 발생');
+      }
+    };
+
+    fetchSheetIndex();
   }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -187,6 +206,13 @@ export default function GreedDashboard() {
             <Search className="absolute left-4 top-4 text-slate-500" size={18} />
           </form>
         </header>
+
+        <div className="mb-6 rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-center">
+          <p className="text-sm text-slate-400">쉬트 기준 오늘의 공포/탐욕 지수</p>
+          <p className="text-4xl font-black" style={{ color: sheetGreedIndex && !['불러오는 중...','오류 발생','데이터 없음'].includes(sheetGreedIndex) ? '#34d399' : '#f97316' }}>
+            {sheetGreedIndex}
+          </p>
+        </div>
 
         <AnimatePresence mode="wait">
           {isQuerying ? (

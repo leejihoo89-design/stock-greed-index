@@ -20,17 +20,30 @@ export async function GET(request: Request) {
     const rows = await sheet.getRows();
     
     const stockData = rows.map(row => {
-      const raw = row._rawData;
+      // google-spreadsheet v5+는 row.toObject()를 권장
+      const rowAny = row as any;
+      const raw = (typeof rowAny.toObject === 'function') ? rowAny.toObject() : rowAny._rawData;
+      const isArray = Array.isArray(raw);
+      const name = isArray ? raw[0] : raw['name'] || raw['Name'] || raw['ticker'];
+      const scoreValue = isArray ? raw[1] : raw['score'] || raw['Score'] || raw['greedIndex'];
+      const detailValue = isArray ? raw[2] : raw['detail'] || raw['Detail'];
+      const timeValue = isArray ? raw[3] : raw['time'] || raw['Time'];
+      const metricsCell = isArray ? raw[4] : raw['metrics'] || raw['metrics_json'] || raw['Metrics'];
+
       let metricsData = null;
-      // 5번째 열(raw[4])에 파이썬이 세부 지표를 JSON으로 넣어줄 겁니다.
-      if (raw[4]) {
-        try { metricsData = JSON.parse(raw[4]); } catch (e) {}
+      if (metricsCell) {
+        if (typeof metricsCell === 'string') {
+          try { metricsData = JSON.parse(metricsCell); } catch (e) { }
+        } else {
+          metricsData = metricsCell;
+        }
       }
+
       return {
-        name: raw[0],
-        score: parseFloat(raw[1]),
-        detail: raw[2],
-        time: raw[3],
+        name,
+        score: parseFloat(scoreValue ?? '0'),
+        detail: detailValue || '',
+        time: timeValue || '',
         metrics: metricsData
       };
     });
