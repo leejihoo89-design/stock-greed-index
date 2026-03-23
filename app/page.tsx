@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const GaugeComponent = dynamic(() => import('react-gauge-component'), { ssr: false });
 
-// 🇰🇷 한국 주식 자동 변환 사전
+// 🇰🇷 한국 주식 자동 변환 사전 (미국 주식 전용 안내를 넣었지만, 기존 사용자 편의를 위해 기능은 남겨둡니다)
 const koreanStockMap: Record<string, string> = {
   "삼성전자": "005930",
   "SK하이닉스": "000660",
@@ -25,14 +25,14 @@ const koreanStockMap: Record<string, string> = {
 
 const translations: any = {
   ko: { 
-    title: "GLOBAL GREED INDEX", search: "종목명 입력 (예: 삼성전자, TSLA)", loading: "실시간 데이터 조회 중", aiText: "AI가 실제 시장 데이터를 연산하고 있습니다...", welcome: "환영합니다!", welcomeDesc: "우측 상단 검색창에 분석을 원하는 종목을 입력해주세요.", wait: "대기 중...", fear: "공포", greed: "탐욕", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "실시간 일봉 차트", news: "실시간 주요 뉴스", error: "❌ 존재하지 않거나 분석 불가한 종목입니다.",
+    title: "GLOBAL GREED INDEX", search: "종목명 입력 (예: TSLA, IONQ 과 같이 티커명 입력)", loading: "실시간 데이터 조회 중", aiText: "AI가 실제 시장 데이터를 연산하고 있습니다...", welcome: "환영합니다!", welcomeDesc: "우측 상단 검색창에 분석을 원하는 종목을 입력해주세요.", wait: "대기 중...", fear: "공포", greed: "탐욕", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "실시간 일봉 차트", news: "실시간 주요 뉴스", error: "❌ 존재하지 않거나 분석 불가한 종목입니다.",
     metrics: { momentum: "모멘텀 (추세)", rsi: "RSI (상대강도)", supply: "메이저 수급", sentiment: "시장 심리", volatility: "변동성 (위험도)", short_risk: "공매도 리스크", relative_gain: "상대적 수익률" },
     status: { extremeFear: "극심한 공포", fear: "공포", neutral: "중립", greed: "탐욕", extremeGreed: "극심한 탐욕" },
     insightDesc: (score:number, status:string, rsi:number, mom:number) => `종합 ${score}pts | ${status} 구간입니다. 차트 기반 실제 RSI(${rsi})와 모멘텀(${mom}) 수치가 강하게 반영되었습니다.`,
     rankingTitle: "🔥 실시간 시장 온도 (검색 데이터 기반)", topGreed: "탐욕 랭킹 Top 5", topFear: "공포 랭킹 Top 5"
   },
   en: { 
-    title: "GLOBAL GREED INDEX", search: "Enter ticker (e.g. TSLA)", loading: "Fetching Live Data", aiText: "AI is processing real market data...", welcome: "Welcome!", welcomeDesc: "Enter a ticker in the search bar to begin.", wait: "Waiting...", fear: "FEAR", greed: "GREED", insight: "Data Insight", core: "7-Core Metrics", chart: "LIVE DAILY CHART", news: "Live Latest News", error: "❌ Ticker not found or invalid.",
+    title: "GLOBAL GREED INDEX", search: "Enter ticker (e.g. TSLA, IONQ)", loading: "Fetching Live Data", aiText: "AI is processing real market data...", welcome: "Welcome!", welcomeDesc: "Enter a ticker in the search bar to begin.", wait: "Waiting...", fear: "FEAR", greed: "GREED", insight: "Data Insight", core: "7-Core Metrics", chart: "LIVE DAILY CHART", news: "Live Latest News", error: "❌ Ticker not found or invalid.",
     metrics: { momentum: "Momentum", rsi: "RSI Strength", supply: "Major Supply", sentiment: "Sentiment", volatility: "Volatility", short_risk: "Short Risk", relative_gain: "Relative Gain" },
     status: { extremeFear: "Extreme Fear", fear: "Fear", neutral: "Neutral", greed: "Greed", extremeGreed: "Extreme Greed" },
     insightDesc: (score:number, status:string, rsi:number, mom:number) => `Total ${score}pts | ${status} zone. Real chart-based RSI (${rsi}) and Momentum (${mom}) are strongly reflected.`,
@@ -49,7 +49,10 @@ export default function GreedDashboard() {
   const [currentStock, setCurrentStock] = useState<any>(null);
   const [isQuerying, setIsQuerying] = useState(false);
   const [news, setNews] = useState<any[]>([]);
-  const [sheetGreedIndex, setSheetGreedIndex] = useState<string>('불러오는 중...');
+  
+  // 💡 수정됨: QQQ와 SPY 각각의 상태 관리
+  const [qqqIndex, setQqqIndex] = useState<string>('로딩 중...');
+  const [spyIndex, setSpyIndex] = useState<string>('로딩 중...');
 
   // 📡 초기 전체 데이터 로드
   const loadData = async () => {
@@ -98,27 +101,36 @@ export default function GreedDashboard() {
     });
   }, []);
 
-  // 📡 메인 시트 탐욕 지수 로드
+  // 📡 💡 수정됨: QQQ와 SPY 지수를 동시에 불러오는 로직
   useEffect(() => {
-    const fetchSheetIndex = async () => {
+    const fetchMarketIndices = async () => {
       try {
-        const res = await fetch('/api/stock?ticker=TSLA');
-        const json = await res.json();
-        // 💡 API가 배열로 응답하므로 json[0].score 사용
-        if (res.ok && Array.isArray(json) && json.length > 0) {
-          setSheetGreedIndex(String(json[0].score));
-        } else {
-          setSheetGreedIndex('데이터 없음');
+        const [resQqq, resSpy] = await Promise.all([
+          fetch('/api/stock?ticker=QQQ'),
+          fetch('/api/stock?ticker=SPY')
+        ]);
+        
+        if (resQqq.ok) {
+          const jsonQqq = await resQqq.json();
+          if (Array.isArray(jsonQqq) && jsonQqq.length > 0) setQqqIndex(String(jsonQqq[0].score));
+          else setQqqIndex('-');
+        }
+        
+        if (resSpy.ok) {
+          const jsonSpy = await resSpy.json();
+          if (Array.isArray(jsonSpy) && jsonSpy.length > 0) setSpyIndex(String(jsonSpy[0].score));
+          else setSpyIndex('-');
         }
       } catch (error) {
-        setSheetGreedIndex('오류 발생');
+        setQqqIndex('오류');
+        setSpyIndex('오류');
       }
     };
 
-    fetchSheetIndex();
+    fetchMarketIndices();
   }, []);
 
-  // 🚀 새로고침된 초고속 하이브리드 검색 함수 (12초 대기 버그 삭제)
+  // 🚀 검색 함수
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm || isQuerying) return;
@@ -127,7 +139,6 @@ export default function GreedDashboard() {
     setIsQuerying(true);
 
     try {
-      // 1. 이미 불러온 목록(stocks)에 캐시된 데이터가 있는지 먼저 확인
       const foundInStocks = stocks.find((s: any) => s.name === targetTicker);
       if (foundInStocks && foundInStocks.score !== -1) {
         setCurrentStock(foundInStocks);
@@ -136,28 +147,21 @@ export default function GreedDashboard() {
         return; 
       }
 
-      // 2. 목록에 없으면 API로 즉시 실시간 데이터 요청
       const res = await fetch(`/api/stock?ticker=${targetTicker}`, { cache: 'no-store' });
       
       if (res.ok) {
         const data = await res.json();
-        
-        // 💡 API가 보내준 배열 데이터 첫 번째 요소를 화면에 바로 띄움
         if (Array.isArray(data) && data.length > 0) {
           setCurrentStock(data[0]);
-          
-          // 실시간으로 긁어온 데이터를 하단 랭킹(stocks)에도 즉시 추가
           setStocks(prev => {
-            if (!prev.find(s => s.name === data[0].name)) {
-              return [...prev, data[0]];
-            }
+            if (!prev.find(s => s.name === data[0].name)) return [...prev, data[0]];
             return prev;
           });
         } else {
-          alert(t.error); // 데이터가 빈 배열로 오면 에러
+          alert(t.error);
         }
       } else {
-        alert(t.error); // 404 등 네트워크 에러
+        alert(t.error); 
       }
     } catch (err) {
       alert("데이터를 불러오는 중 오류가 발생했습니다.");
@@ -228,24 +232,38 @@ export default function GreedDashboard() {
   return (
     <main className="min-h-screen bg-[#0a0f1c] text-slate-100 p-4 md:p-10 font-sans relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
-        <header className="flex flex-col md:flex-row justify-between items-center mb-12 gap-8">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-8">
           <div className="flex items-center gap-4">
             <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">{t.title}</h1>
             <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors">
               <option value="ko">🇰🇷 KOR</option><option value="en">🇺🇸 ENG</option><option value="es">🇪🇸 ESP</option><option value="ja">🇯🇵 JPN</option><option value="zh">🇨🇳 CHN</option>
             </select>
           </div>
-          <form onSubmit={handleSearch} className="relative w-full md:w-96">
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={t.search} className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl py-3.5 px-12 focus:ring-2 focus:ring-cyan-500 outline-none transition-all" />
-            <Search className="absolute left-4 top-4 text-slate-500" size={18} />
-          </form>
+          
+          {/* 💡 수정됨: 검색창 및 하단 경고 문구 추가 */}
+          <div className="relative w-full md:w-96 flex flex-col items-end">
+            <form onSubmit={handleSearch} className="relative w-full">
+              <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={t.search} className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl py-3.5 px-12 focus:ring-2 focus:ring-cyan-500 outline-none transition-all text-sm" />
+              <Search className="absolute left-4 top-4 text-slate-500" size={18} />
+            </form>
+            <p className="text-[11px] text-red-400/90 mt-2 font-medium tracking-wide">※ 미국 주식 티커명만 분석 가능합니다 ※</p>
+          </div>
         </header>
 
-        <div className="mb-6 rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-center">
-          <p className="text-sm text-slate-400">쉬트 기준 오늘의 공포/탐욕 지수</p>
-          <p className="text-4xl font-black" style={{ color: sheetGreedIndex && !['불러오는 중...','오류 발생','데이터 없음'].includes(sheetGreedIndex) ? '#34d399' : '#f97316' }}>
-            {sheetGreedIndex}
-          </p>
+        {/* 💡 수정됨: QQQ와 SPY 나란히 배치 */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-center">
+            <p className="text-sm text-slate-400 font-bold mb-1">QQQ (나스닥 100)</p>
+            <p className="text-4xl font-black" style={{ color: !isNaN(Number(qqqIndex)) ? (Number(qqqIndex) >= 50 ? '#34d399' : '#f97316') : '#94a3b8' }}>
+              {qqqIndex}
+            </p>
+          </div>
+          <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-center">
+            <p className="text-sm text-slate-400 font-bold mb-1">SPY (S&P 500)</p>
+            <p className="text-4xl font-black" style={{ color: !isNaN(Number(spyIndex)) ? (Number(spyIndex) >= 50 ? '#34d399' : '#f97316') : '#94a3b8' }}>
+              {spyIndex}
+            </p>
+          </div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -263,7 +281,15 @@ export default function GreedDashboard() {
                     <h2 className="text-5xl font-black tracking-tight mb-2">{currentStock?.name || t.wait}</h2>
                     <p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • {currentStock?.time || "-"}</p>
                   </div>
-                  <div className="relative w-full max-w-sm mx-auto mb-8">
+                  
+                  <div className="relative w-full max-w-sm mx-auto mb-8 pt-4">
+                    {/* 💡 수정됨: 게이지 위에 Greed Index 라벨 추가 */}
+                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
+                      <span className="bg-slate-800 text-cyan-400 px-4 py-1 rounded-full text-xs font-black tracking-widest uppercase border border-cyan-500/30 shadow-lg shadow-cyan-500/10">
+                        Greed Index
+                      </span>
+                    </div>
+                    
                     <div className="absolute left-0 -bottom-2 text-[10px] font-bold text-red-500">{t.fear}</div>
                     <div className="absolute right-0 -bottom-2 text-[10px] font-bold text-emerald-500">{t.greed}</div>
                     <GaugeComponent value={currentStock?.score || 50} arc={{ width: 0.15, padding: 0.01, subArcs: [{ limit: 25, color: '#ef4444' }, { limit: 45, color: '#f97316' }, { limit: 55, color: '#94a3b8' }, { limit: 75, color: '#22c55e' }, { limit: 100, color: '#10b981' }] }} pointer={{ type: "blob", animationDelay: 0, color: '#fff' }} labels={{ valueLabel: { formatTextValue: (value) => value.toString(), style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } } }} />
