@@ -1,8 +1,11 @@
 "use client";
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { Search, TrendingUp, AlertCircle, Loader2, BarChart3, Activity, Users, Zap, ShieldAlert, Globe, Repeat, LineChart, Newspaper, Clock, Flame, Snowflake, Sparkles, Share2, Copy, MessageCircle } from 'lucide-react';
+import { Search, TrendingUp, AlertCircle, Loader2, BarChart3, Activity, Users, Zap, ShieldAlert, Globe, Repeat, LineChart, Newspaper, Clock, Flame, Snowflake, Sparkles, Share2, Copy, MessageCircle, DatabaseBackup } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+import { collection, getDocs, doc, setDoc, increment, serverTimestamp } from 'firebase/firestore';
+import { db } from './firebase';
 
 const GaugeComponent = dynamic(() => import('react-gauge-component'), { ssr: false });
 
@@ -17,31 +20,13 @@ const translations: any = {
     title: "GLOBAL GREED INDEX", search: "종목명 입력 (예: TSLA, IONQ 과 같이 티커명 입력)", loading: "실시간 데이터 조회 중", aiText: "AI가 실제 시장 데이터를 연산하고 있습니다...", welcome: "환영합니다!", welcomeDesc: "우측 상단 검색창에 분석을 원하는 종목을 입력해주세요.", wait: "대기 중...", fear: "공포", greed: "탐욕", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "실시간 일봉 차트", news: "실시간 주요 뉴스", error: "❌ 존재하지 않거나 분석 불가한 종목입니다.",
     metrics: { momentum: "모멘텀 (추세)", rsi: "RSI (상대강도)", supply: "메이저 수급", sentiment: "시장 심리", volatility: "변동성 (위험도)", short_risk: "공매도 리스크", relative_gain: "상대적 수익률" },
     status: { extremeFear: "극심한 공포", fear: "공포", neutral: "중립", greed: "탐욕", extremeGreed: "극심한 탐욕" },
-    rankingTitle: "🔥 실시간 시장 온도 (검색 데이터 기반)", topGreed: "탐욕 랭킹 Top 5", topFear: "공포 랭킹 Top 5"
+    rankingTitle: "🔥 실시간 시장 온도 (누적 검색 랭킹)", topGreed: "탐욕 랭킹 Top 5", topFear: "공포 랭킹 Top 5"
   },
   en: { 
     title: "GLOBAL GREED INDEX", search: "Enter ticker (e.g. TSLA, IONQ)", loading: "Fetching Live Data", aiText: "AI is processing real market data...", welcome: "Welcome!", welcomeDesc: "Enter a ticker in the search bar to begin.", wait: "Waiting...", fear: "FEAR", greed: "GREED", insight: "Data Insight", core: "7-Core Metrics", chart: "LIVE DAILY CHART", news: "Live Latest News", error: "❌ Ticker not found or invalid.",
     metrics: { momentum: "Momentum", rsi: "RSI Strength", supply: "Major Supply", sentiment: "Sentiment", volatility: "Volatility", short_risk: "Short Risk", relative_gain: "Relative Gain" },
     status: { extremeFear: "Extreme Fear", fear: "Fear", neutral: "Neutral", greed: "Greed", extremeGreed: "Extreme Greed" },
     rankingTitle: "🔥 Live Market Temperature", topGreed: "Top 5 Greed", topFear: "Top 5 Fear"
-  },
-  es: { 
-    title: "ÍNDICE DE CODICIA GLOBAL", search: "Ingrese ticker (ej: TSLA)", loading: "Obteniendo datos", aiText: "La IA está procesando...", welcome: "¡Bienvenido!", welcomeDesc: "Ingrese un ticker para comenzar.", wait: "Esperando...", fear: "MIEDO", greed: "CODICIA", insight: "Análisis de Datos", core: "7 Métricas Clave", chart: "Gráfico en Vivo", news: "Noticias en Vivo", error: "❌ Ticker no encontrado.",
-    metrics: { momentum: "Impulso", rsi: "Fuerza RSI", supply: "Oferta", sentiment: "Sentimiento", volatility: "Volatilidad", short_risk: "Riesgo", relative_gain: "Ganancia" },
-    status: { extremeFear: "Miedo Extremo", fear: "Miedo", neutral: "Neutral", greed: "Codicia", extremeGreed: "Codicia Extrema" },
-    rankingTitle: "🔥 Temperatura del Mercado", topGreed: "Top 5 Codicia", topFear: "Top 5 Miedo"
-  },
-  ja: { 
-    title: "グローバル強欲指数", search: "銘柄名入力 (例: TSLA)", loading: "取得中...", aiText: "AIが演算中...", welcome: "ようこそ！", welcomeDesc: "銘柄を入力してください。", wait: "待機中...", fear: "強欲", greed: "恐怖", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "チャート", news: "ニュース", error: "❌ 無効な銘柄です。",
-    metrics: { momentum: "モメンタム", rsi: "RSI強度", supply: "需給", sentiment: "心理", volatility: "変動性", short_risk: "リスク", relative_gain: "収益率" },
-    status: { extremeFear: "極度の恐怖", fear: "恐怖", neutral: "中立", greed: "強欲", extremeGreed: "極度の強欲" },
-    rankingTitle: "🔥 市場温度", topGreed: "強欲 Top 5", topFear: "恐怖 Top 5"
-  },
-  zh: { 
-    title: "全球贪婪指数", search: "输入代码 (如: TSLA)", loading: "获取中...", aiText: "AI 正在计算...", welcome: "欢迎！", welcomeDesc: "请输入代码开始分析。", wait: "等待中...", fear: "恐惧", greed: "贪婪", insight: "数据洞察", core: "7大核心指标", chart: "实时日K线", news: "实时新闻", error: "❌ 代码不存在。",
-    metrics: { momentum: "动量强度", rsi: "RSI 强度", supply: "主要资金", sentiment: "市场情绪", volatility: "波动率", short_risk: "做空风险", relative_gain: "相对收益" },
-    status: { extremeFear: "极度恐惧", fear: "恐惧", neutral: "中立", greed: "贪婪", extremeGreed: "极度贪婪" },
-    rankingTitle: "🔥 实时市场热度", topGreed: "贪婪排行榜 Top 5", topFear: "恐惧排行榜 Top 5"
   }
 };
 
@@ -53,97 +38,79 @@ export default function GreedDashboard() {
   const [currentStock, setCurrentStock] = useState<any>(null);
   const [isQuerying, setIsQuerying] = useState(false);
   const [news, setNews] = useState<any[]>([]);
-  
   const [qqqIndex, setQqqIndex] = useState<string>('로딩 중...');
   const [spyIndex, setSpyIndex] = useState<string>('로딩 중...');
-  
-  // 상태 관리: 방문자 수, 공유 팝업
   const [visitors, setVisitors] = useState({ today: '...', total: '...' });
   const [isShareOpen, setIsShareOpen] = useState(false);
 
-  // 🚀 1. 일일/누적 방문자 카운터 (매일 00시 자동 리셋)
+  // 카운터
   useEffect(() => {
     const fetchVisitors = async () => {
       try {
         const todayStr = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).replace(/[^0-9]/g, '');
-
         const [totalRes, todayRes] = await Promise.all([
-          fetch('https://api.counterapi.dev/v1/stockgreed_app/total/up'),
-          fetch(`https://api.counterapi.dev/v1/stockgreed_app/today_${todayStr}/up`)
+          fetch('https://api.counterapi.dev/v1/stockgreed_app_v2/total/up', { cache: 'no-store' }),
+          fetch(`https://api.counterapi.dev/v1/stockgreed_app_v2/today_${todayStr}/up`, { cache: 'no-store' })
         ]);
-        
         const totalData = await totalRes.json();
         const todayData = await todayRes.json();
-        
         setVisitors({ today: todayData.count.toLocaleString(), total: totalData.count.toLocaleString() });
       } catch (e) {
-        setVisitors({ today: '1', total: '1' });
+        setVisitors({ today: 'Error', total: 'Error' });
       }
     };
     fetchVisitors();
   }, []);
 
-  // 🚀 2. QQQ, SPY 지수 호출 (원래 구글 시트 API로 복구)
+  // 지수
   useEffect(() => {
     const fetchMarketIndices = async () => {
       try {
         const [resQqq, resSpy] = await Promise.all([
-          fetch('/api/stock?ticker=QQQ'), 
-          fetch('/api/stock?ticker=SPY')
+          fetch('/api/market?ticker=QQQ', { cache: 'no-store' }),
+          fetch('/api/market?ticker=SPY', { cache: 'no-store' })
         ]);
-        
-        if (resQqq.ok) {
-          const j = await resQqq.json();
-          const finalQqq = Array.isArray(j) ? j[0] : j;
-          setQqqIndex(finalQqq && finalQqq.score !== -1 ? String(finalQqq.score) : '데이터 없음');
-        } else { setQqqIndex('데이터 없음'); }
-        
-        if (resSpy.ok) {
-          const j = await resSpy.json();
-          const finalSpy = Array.isArray(j) ? j[0] : j;
-          setSpyIndex(finalSpy && finalSpy.score !== -1 ? String(finalSpy.score) : '데이터 없음');
-        } else { setSpyIndex('데이터 없음'); }
-        
+        if (resQqq.ok) { const j = await resQqq.json(); setQqqIndex(String(j.score)); } else { setQqqIndex('오류'); }
+        if (resSpy.ok) { const j = await resSpy.json(); setSpyIndex(String(j.score)); } else { setSpyIndex('오류'); }
       } catch (e) { setQqqIndex('오류'); setSpyIndex('오류'); }
     };
     fetchMarketIndices();
   }, []);
 
-  // 🚀 3. 공유하기 기능
+  // 공유
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     alert("사이트 주소가 복사되었습니다!\n원하는 곳에 붙여넣기(Ctrl+V) 하세요.");
     setIsShareOpen(false);
   };
-
   const handleNativeShare = () => {
     if (navigator.share) {
-      navigator.share({
-        title: 'GLOBAL GREED INDEX',
-        text: '현재 미국 주식 시장의 실시간 공포/탐욕 지수를 확인해보세요!',
-        url: window.location.href,
-      }).catch((error) => console.log('공유 실패', error));
-    } else {
-      handleCopyLink();
-    }
+      navigator.share({ title: 'GLOBAL GREED INDEX', text: '현재 미국 주식 시장의 실시간 공포/탐욕 지수를 확인해보세요!', url: window.location.href, }).catch(() => {});
+    } else { handleCopyLink(); }
     setIsShareOpen(false);
   };
 
+  // 🔥 Firebase DB에서 무조건 데이터 가져오기 (비어있어도 배열 세팅)
   const loadData = async () => {
     try {
-      const res = await fetch('/api/stock');
-      const data = await res.json();
-      if (Array.isArray(data)) setStocks(data);
-      return data;
-    } catch (err) { return []; }
+      const querySnapshot = await getDocs(collection(db, 'stocks'));
+      const dbStocks = querySnapshot.docs.map(doc => doc.data());
+      setStocks(dbStocks); // 데이터가 0개여도 상태 업데이트!
+      return dbStocks;
+    } catch (err: any) { 
+      console.error("DB 불러오기 실패:", err);
+      return []; 
+    }
   };
 
   useEffect(() => {
     loadData().then(data => {
       const valid = data.filter((s:any) => s.score > 0);
       if (valid.length > 0) {
-        setCurrentStock(valid.find((s: any) => s.name.toUpperCase().includes('TSLA')) || valid[0]);
+        // 검색량이 가장 많은 1위 종목을 기본 화면에 노출
+        setCurrentStock(valid.sort((a,b) => b.searches - a.searches)[0]);
       } else {
+        // DB가 텅 비었을 때 보여주는 기본 환영 화면
         setCurrentStock({
           name: t.welcome, score: 50,
           metrics: { momentum: 50, rsi: 50, supply: 50, sentiment: 50, volatility: 50, short_risk: 50, relative_gain: 50 }
@@ -163,19 +130,39 @@ export default function GreedDashboard() {
     fetchNews();
   }, [currentStock?.name, lang]);
 
+  // 검색 및 Firebase DB 누적 저장
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm || isQuerying) return;
     let target = koreanStockMap[searchTerm.trim()] || searchTerm.trim().toUpperCase();
     setIsQuerying(true);
     try {
-      const res = await fetch(`/api/stock?ticker=${target}`, { cache: 'no-store' });
+      const res = await fetch(`/api/market?ticker=${target}`, { cache: 'no-store' });
       const data = await res.json();
-      const final = Array.isArray(data) ? data[0] : data;
-      if (final && final.score !== -1) {
+      
+      if (data && data.score) {
+        const final = {
+          name: data.ticker,
+          score: data.score,
+          metrics: { momentum: 50, rsi: data.score, supply: 50, sentiment: 50, volatility: 50, short_risk: 50, relative_gain: 50 }
+        };
+
+        // 🚨 파이어베이스 저장 및 에러 캐치 강화
+        try {
+          await setDoc(doc(db, "stocks", final.name), {
+            name: final.name,
+            score: final.score,
+            searches: increment(1),
+            lastUpdated: serverTimestamp()
+          }, { merge: true });
+        } catch (dbError: any) {
+          console.error("Firebase 저장 에러:", dbError);
+          alert("데이터베이스 저장 권한 오류가 발생했습니다. 파이어베이스의 보안 규칙을 '테스트 모드'로 변경했는지 확인해주세요!");
+        }
+
         setCurrentStock(final);
-        setStocks(prev => [...prev.filter(s => s.name !== final.name), final]);
-      } else alert(t.error);
+        loadData(); // 랭킹판 갱신
+      } else { alert(t.error); }
     } catch (err) { alert(t.error); }
     finally { setIsQuerying(false); setSearchTerm(''); }
   };
@@ -194,7 +181,6 @@ export default function GreedDashboard() {
     let detail = m.rsi > 70 ? "현재 RSI 지표상 과매수 구간에 진입하여 단기 조정을 경계해야 하며," : m.rsi < 30 ? "RSI가 과매도 상태로 기술적 반등 가능성이 열려 있는 구간이며," : "차트 흐름이 안정적인 중립 궤도 내에서 움직이고 있으며,";
     detail += m.momentum > 60 ? " 강력한 상승 모멘텀이 시세를 견인하고 있으나" : m.momentum < 40 ? " 하락 압력이 우세하여 보수적인 접근이 필요하나" : " 적절한 추세 지속성을 유지하고 있으나";
     detail += m.short_risk > 70 ? " 높은 공매도 리스크가 상존하므로 수급 변화에 주의하십시오." : " 수급 및 공매도 상황은 비교적 안정적인 편입니다.";
-    
     return { score: s, status, detail, color, isWelcome: false };
   };
 
@@ -217,56 +203,23 @@ export default function GreedDashboard() {
     <main className="min-h-screen bg-[#0a0f1c] text-slate-100 p-4 md:p-10 font-sans relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
         
-        {/* 🚀 헤더: 방문자 카운터 및 5개국어, 공유하기 선택 */}
+        {/* 헤더 부분 */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-8 relative">
-          
           <div className="absolute -top-10 left-0 flex items-center gap-4 bg-slate-900/60 px-4 py-1.5 rounded-full border border-slate-800/50 backdrop-blur-md shadow-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Today</span>
-              <span className="text-[11px] font-black text-emerald-400">{visitors.today}</span>
-            </div>
+            <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div><span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Today</span><span className="text-[11px] font-black text-emerald-400">{visitors.today}</span></div>
             <div className="w-[1px] h-2 bg-slate-700"></div>
-            <div className="flex items-center gap-2">
-              <Users size={10} className="text-cyan-500" />
-              <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Total</span>
-              <span className="text-[11px] font-black text-cyan-400">{visitors.total}</span>
-            </div>
+            <div className="flex items-center gap-2"><Users size={10} className="text-cyan-500" /><span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Total</span><span className="text-[11px] font-black text-cyan-400">{visitors.total}</span></div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
-            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mr-2">
-              {t.title}
-            </h1>
-            
-            <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors">
-              <option value="ko">🇰🇷 KOR</option><option value="en">🇺🇸 ENG</option><option value="es">🇪🇸 ESP</option><option value="ja">🇯🇵 JPN</option><option value="zh">🇨🇳 CHN</option>
-            </select>
-
-            {/* 공유하기 드롭다운 메뉴 */}
+          <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0 z-50">
+            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mr-2">{t.title}</h1>
+            <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors"><option value="ko">🇰🇷 KOR</option><option value="en">🇺🇸 ENG</option></select>
             <div className="relative">
-              <button 
-                onClick={() => setIsShareOpen(!isShareOpen)} 
-                className="flex items-center gap-1.5 bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold hover:bg-slate-700 transition-colors"
-              >
-                <Share2 size={14} />
-                <span className="hidden sm:inline">공유</span>
-              </button>
-              
+              <button onClick={() => setIsShareOpen(!isShareOpen)} className="flex items-center gap-1.5 bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold hover:bg-slate-700 transition-colors"><Share2 size={14} /><span className="hidden sm:inline">공유</span></button>
               {isShareOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
-                  <button 
-                    onClick={handleNativeShare}
-                    className="w-full text-left px-4 py-3 text-sm hover:bg-yellow-400/10 hover:text-yellow-400 flex items-center gap-3 transition-colors"
-                  >
-                    <MessageCircle size={16} className="text-yellow-400" /> 친구에게 공유하기
-                  </button>
-                  <button 
-                    onClick={handleCopyLink}
-                    className="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-3 transition-colors border-t border-slate-700/50"
-                  >
-                    <Copy size={16} className="text-slate-400" /> 주소 복사하기
-                  </button>
+                  <button onClick={handleNativeShare} className="w-full text-left px-4 py-3 text-sm hover:bg-yellow-400/10 hover:text-yellow-400 flex items-center gap-3 transition-colors border-b border-slate-700/50"><MessageCircle size={16} className="text-yellow-400" /> 친구에게 공유하기</button>
+                  <button onClick={handleCopyLink} className="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-3 transition-colors"><Copy size={16} className="text-slate-400" /> 주소 복사하기</button>
                 </div>
               )}
             </div>
@@ -281,60 +234,35 @@ export default function GreedDashboard() {
           </div>
         </header>
 
-        {/* 🎨 시장 지수 현황 (기준점 강조 네온 디자인) */}
+        {/* QQQ, SPY 지수 */}
         <div className="grid grid-cols-2 gap-6 mb-10">
           <div className="rounded-[2rem] border border-cyan-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center shadow-[0_0_25px_rgba(6,182,212,0.15)] relative overflow-hidden flex flex-col justify-center items-center h-36">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
-            <p className="text-[11px] text-cyan-400 font-black mb-1 tracking-[0.2em] uppercase">QQQ Greed Index</p>
-            <p className="text-6xl font-black tracking-tighter" style={{ color: !isNaN(Number(qqqIndex)) ? (Number(qqqIndex) >= 50 ? '#34d399' : '#ef4444') : '#64748b', textShadow: !isNaN(Number(qqqIndex)) ? '0 0 20px currentColor' : 'none' }}>
-              {qqqIndex}
-            </p>
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-400 to-blue-500"></div><p className="text-[11px] text-cyan-400 font-black mb-1 tracking-[0.2em] uppercase">QQQ Greed Index</p><p className="text-6xl font-black tracking-tighter" style={{ color: !isNaN(Number(qqqIndex)) ? (Number(qqqIndex) >= 50 ? '#34d399' : '#ef4444') : '#64748b', textShadow: !isNaN(Number(qqqIndex)) ? '0 0 20px currentColor' : 'none' }}>{qqqIndex}</p>
           </div>
           <div className="rounded-[2rem] border border-purple-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center shadow-[0_0_25px_rgba(168,85,247,0.15)] relative overflow-hidden flex flex-col justify-center items-center h-36">
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-500"></div>
-            <p className="text-[11px] text-purple-400 font-black mb-1 tracking-[0.2em] uppercase">SPY Greed Index</p>
-            <p className="text-6xl font-black tracking-tighter" style={{ color: !isNaN(Number(spyIndex)) ? (Number(spyIndex) >= 50 ? '#34d399' : '#ef4444') : '#64748b', textShadow: !isNaN(Number(spyIndex)) ? '0 0 20px currentColor' : 'none' }}>
-              {spyIndex}
-            </p>
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-500"></div><p className="text-[11px] text-purple-400 font-black mb-1 tracking-[0.2em] uppercase">SPY Greed Index</p><p className="text-6xl font-black tracking-tighter" style={{ color: !isNaN(Number(spyIndex)) ? (Number(spyIndex) >= 50 ? '#34d399' : '#ef4444') : '#64748b', textShadow: !isNaN(Number(spyIndex)) ? '0 0 20px currentColor' : 'none' }}>{spyIndex}</p>
           </div>
         </div>
 
         <AnimatePresence mode="wait">
           {isQuerying ? (
-            <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] p-20 flex flex-col items-center justify-center backdrop-blur-xl min-h-[500px]">
-              <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-6"></div>
-              <h2 className="text-xl font-bold mb-2 text-cyan-400">{t.loading}</h2>
-              <p className="text-slate-500 text-sm italic">{t.aiText}</p>
-            </motion.div>
+            <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] p-20 flex flex-col items-center justify-center backdrop-blur-xl min-h-[500px]"><div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-6"></div><h2 className="text-xl font-bold mb-2 text-cyan-400">{t.loading}</h2><p className="text-slate-500 text-sm italic">{t.aiText}</p></motion.div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:col-span-2 flex flex-col gap-6">
-                
                 <div className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-                  <div className="text-center mb-10">
-                    <h2 className="text-5xl font-black tracking-tight mb-2">{currentStock?.name}</h2>
-                    <p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • {currentStock?.time || "Real-time"}</p>
-                  </div>
-                  
+                  <div className="text-center mb-10"><h2 className="text-5xl font-black tracking-tight mb-2">{currentStock?.name}</h2><p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • Real-time</p></div>
                   <div className="relative w-full max-w-sm mx-auto mb-8 pt-4">
-                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10">
-                      <span className="bg-slate-800 text-cyan-400 px-4 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border border-cyan-500/30 shadow-lg shadow-cyan-500/10">Greed Index</span>
-                    </div>
-                    <div className="absolute left-0 -bottom-2 text-[10px] font-bold text-red-500">{t.fear}</div>
-                    <div className="absolute right-0 -bottom-2 text-[10px] font-bold text-emerald-500">{t.greed}</div>
+                    <div className="absolute -top-4 left-0 right-0 flex justify-center z-10"><span className="bg-slate-800 text-cyan-400 px-4 py-1 rounded-full text-[10px] font-black tracking-widest uppercase border border-cyan-500/30 shadow-lg shadow-cyan-500/10">Greed Index</span></div>
+                    <div className="absolute left-0 -bottom-2 text-[10px] font-bold text-red-500">{t.fear}</div><div className="absolute right-0 -bottom-2 text-[10px] font-bold text-emerald-500">{t.greed}</div>
                     <GaugeComponent value={currentStock?.score || 50} arc={{ width: 0.15, padding: 0.01, subArcs: [{ limit: 25, color: '#ef4444' }, { limit: 45, color: '#f97316' }, { limit: 55, color: '#94a3b8' }, { limit: 75, color: '#22c55e' }, { limit: 100, color: '#10b981' }] }} pointer={{ type: "blob", animationDelay: 0, color: '#fff' }} labels={{ valueLabel: { formatTextValue: (v) => v.toString(), style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } } }} />
                   </div>
-                  
                   <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/30 mt-8">
                     <div className="flex items-center gap-2 mb-3 text-cyan-400 font-bold text-sm"><BarChart3 size={16}/> {t.insight}</div>
                     {(() => {
                       const ins = getDynamicInsight();
                       if (ins.isWelcome) return <p className="text-slate-400 leading-relaxed">{ins.text}</p>;
-                      return (
-                        <p className="leading-relaxed font-medium text-slate-200">
-                          종합 {ins.score}pts <span className={`font-black mx-2 ${ins.color}`}>[{ins.status}]</span> : {ins.detail}
-                        </p>
-                      );
+                      return <p className="leading-relaxed font-medium text-slate-200">종합 {ins.score}pts <span className={`font-black mx-2 ${ins.color}`}>[{ins.status}]</span> : {ins.detail}</p>;
                     })()}
                   </div>
                 </div>
@@ -357,13 +285,8 @@ export default function GreedDashboard() {
                       const score = currentStock?.metrics ? currentStock.metrics[m.key] : 0;
                       return (
                         <div key={m.key}>
-                          <div className="flex justify-between text-[10px] mb-2 font-bold tracking-widest uppercase text-slate-400">
-                            <span className="flex items-center gap-1.5">{m.icon} {m.label}</span>
-                            <span className={score >= 50 ? "text-emerald-400" : "text-red-400"}>{score ? score.toFixed(1) : "0.0"}</span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 1, ease: "easeOut" }} className={`h-full ${score >= 50 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"}`} />
-                          </div>
+                          <div className="flex justify-between text-[10px] mb-2 font-bold tracking-widest uppercase text-slate-400"><span className="flex items-center gap-1.5">{m.icon} {m.label}</span><span className={score >= 50 ? "text-emerald-400" : "text-red-400"}>{score ? score.toFixed(1) : "0.0"}</span></div>
+                          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${score}%` }} transition={{ duration: 1, ease: "easeOut" }} className={`h-full ${score >= 50 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" : "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"}`} /></div>
                         </div>
                       );
                     })}
@@ -375,13 +298,8 @@ export default function GreedDashboard() {
                     <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-yellow-400 uppercase tracking-tighter"><Newspaper size={18} /> {t.news}</h3>
                     <div className="flex flex-col gap-5 overflow-y-auto pr-2 custom-scrollbar">
                       {news.length > 0 ? news.map((item: any, idx: number) => (
-                        <a key={idx} href={item.url} target="_blank" rel="noopener noreferrer" className="group block p-2 -m-2 rounded-xl hover:bg-slate-800/50 transition-all border border-transparent hover:border-slate-700/50">
-                          <h4 className="text-[13px] font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors line-clamp-2 leading-snug">{item.title}</h4>
-                          <div className="flex items-center gap-3 mt-2 text-[9px] font-bold text-slate-500 uppercase tracking-tighter"><Clock size={10} /> {item.date || "Just Now"} • News</div>
-                        </a>
-                      )) : (
-                        <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-slate-700 mb-2" /><p className="text-[10px] text-slate-600 italic">Finding latest news...</p></div>
-                      )}
+                        <a key={idx} href={item.url} target="_blank" rel="noopener noreferrer" className="group block p-2 -m-2 rounded-xl hover:bg-slate-800/50 transition-all border border-transparent hover:border-slate-700/50"><h4 className="text-[13px] font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors line-clamp-2 leading-snug">{item.title}</h4><div className="flex items-center gap-3 mt-2 text-[9px] font-bold text-slate-500 uppercase tracking-tighter"><Clock size={10} /> {item.date || "Just Now"} • News</div></a>
+                      )) : <div className="py-10 text-center"><Loader2 className="animate-spin mx-auto text-slate-700 mb-2" /><p className="text-[10px] text-slate-600 italic">Finding latest news...</p></div>}
                     </div>
                   </div>
                 )}
@@ -390,33 +308,43 @@ export default function GreedDashboard() {
           )}
         </AnimatePresence>
 
-        {!isQuerying && validStocks.length > 0 && (
-          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8 bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-8 backdrop-blur-md shadow-xl">
+        {/* 🔥 하단 랭킹 섹션 (데이터가 없어도 항상 띄워둠!) */}
+        {!isQuerying && (
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8 bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-8 backdrop-blur-md shadow-xl min-h-[300px]">
             <h3 className="text-xl font-bold mb-8 text-center text-slate-200 uppercase tracking-widest">{t.rankingTitle}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-                <h4 className="text-sm font-bold text-emerald-400 mb-6 flex items-center gap-2 border-b border-emerald-900/50 pb-2 uppercase tracking-tighter"><Flame size={16} /> {t.topGreed}</h4>
-                <div className="flex flex-col gap-3">
-                  {topGreed.map((s, i) => (
-                    <div key={s.name} onClick={() => { setSearchTerm(s.name); }} className="flex justify-between items-center p-3.5 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 cursor-pointer transition-all border border-slate-700/30 group">
-                      <span className="font-bold text-slate-300 flex items-center gap-3"><span className="text-emerald-500/50 font-mono w-4">{i + 1}</span> {s.name}</span>
-                      <span className="font-mono font-black text-emerald-400 group-hover:scale-110 transition-transform">{s.score}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-                <h4 className="text-sm font-bold text-red-400 mb-6 flex items-center gap-2 border-b border-red-900/50 pb-2 uppercase tracking-tighter"><Snowflake size={16} /> {t.topFear}</h4>
-                <div className="flex flex-col gap-3">
-                  {topFear.map((s, i) => (
-                    <div key={s.name} onClick={() => { setSearchTerm(s.name); }} className="flex justify-between items-center p-3.5 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 cursor-pointer transition-all border border-slate-700/30 group">
-                      <span className="font-bold text-slate-300 flex items-center gap-3"><span className="text-red-500/50 font-mono w-4">{i + 1}</span> {s.name}</span>
-                      <span className="font-mono font-black text-red-400 group-hover:scale-110 transition-transform">{s.score}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
+            
+            {validStocks.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                  <h4 className="text-sm font-bold text-emerald-400 mb-6 flex items-center gap-2 border-b border-emerald-900/50 pb-2 uppercase tracking-tighter"><Flame size={16} /> {t.topGreed}</h4>
+                  <div className="flex flex-col gap-3">
+                    {topGreed.map((s, i) => (
+                      <div key={s.name} onClick={() => setSearchTerm(s.name)} className="flex justify-between items-center p-3.5 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 cursor-pointer transition-all border border-slate-700/30 group">
+                        <span className="font-bold text-slate-300 flex items-center gap-3"><span className="text-emerald-500/50 font-mono w-4">{i + 1}</span> {s.name}</span>
+                        <span className="font-mono font-black text-emerald-400 group-hover:scale-110 transition-transform">{s.score}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                  <h4 className="text-sm font-bold text-red-400 mb-6 flex items-center gap-2 border-b border-red-900/50 pb-2 uppercase tracking-tighter"><Snowflake size={16} /> {t.topFear}</h4>
+                  <div className="flex flex-col gap-3">
+                    {topFear.map((s, i) => (
+                      <div key={s.name} onClick={() => setSearchTerm(s.name)} className="flex justify-between items-center p-3.5 rounded-xl bg-slate-800/40 hover:bg-slate-700/60 cursor-pointer transition-all border border-slate-700/30 group">
+                        <span className="font-bold text-slate-300 flex items-center gap-3"><span className="text-red-500/50 font-mono w-4">{i + 1}</span> {s.name}</span>
+                        <span className="font-mono font-black text-red-400 group-hover:scale-110 transition-transform">{s.score}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+                <DatabaseBackup size={48} className="mb-4 text-slate-600 opacity-50" />
+                <p className="text-sm font-medium">아직 누적된 검색 데이터가 없습니다.</p>
+                <p className="text-xs mt-2 text-cyan-500 font-bold">원하는 종목을 검색하여 랭킹의 첫 주인공이 되어보세요!</p>
+              </div>
+            )}
           </motion.div>
         )}
       </div>
