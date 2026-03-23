@@ -12,6 +12,7 @@
     "@google/generative-ai": "^0.24.1",
     "@vercel/analytics": "^2.0.1",
     "axios": "^1.13.6",
+    "firebase": "^12.11.0",
     "framer-motion": "^12.38.0",
     "google-auth-library": "^10.6.2",
     "google-spreadsheet": "^5.2.0",
