@@ -3,25 +3,28 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    const googleAuth = new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL,
-        private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-      },
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
+    // 1. 구글 인증 설정
+    const auth = new google.auth.JWT(
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      undefined,
+      process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'), // 줄바꿈 문자 처리
+      ['https://www.googleapis.com/auth/spreadsheets.readonly']
+    );
 
-    const authClient = await googleAuth.getClient() as any;
-    const sheets = google.sheets({ version: 'v4', auth: authClient });
+    const sheets = google.sheets({ version: 'v4', auth });
+    
+    // 2. 구글 시트 데이터 읽기
+    // 지후님의 시트 이름이 'Sheet1'이 맞는지 꼭 확인하세요!
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.GOOGLE_SHEET_ID || '',
-      range: 'Sheet1!A2',
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: 'Sheet1!A2', // 탐욕지수 숫자가 들어있는 셀 범위
     });
 
-    const value = response.data.values?.[0]?.[0] || null;
+    const value = response.data.values?.[0][0];
+
     return NextResponse.json({ greedIndex: value });
-  } catch (error) {
-    console.error('stock-data API error', error);
-    return NextResponse.json({ error: '데이터를 가져오지 못했습니다.' }, { status: 500 });
+  } catch (error: any) {
+    console.error('구글 시트 에러:', error);
+    return NextResponse.json({ error: '데이터를 가져오지 못했습니다.', details: error.message }, { status: 500 });
   }
 }
