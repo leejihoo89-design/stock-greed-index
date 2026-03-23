@@ -4,12 +4,11 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     // 1. 구글 인증 설정
-    const auth = new google.auth.JWT(
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      undefined,
-      process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'), // 줄바꿈 문자 처리
-      ['https://www.googleapis.com/auth/spreadsheets.readonly']
-    );
+  const auth = new google.auth.JWT({
+  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+});
 
     const sheets = google.sheets({ version: 'v4', auth });
     
