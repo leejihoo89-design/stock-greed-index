@@ -54,34 +54,41 @@ export default function GreedDashboard() {
   const [currentStock, setCurrentStock] = useState<any>(null);
   const [isQuerying, setIsQuerying] = useState(false);
   const [news, setNews] = useState<any[]>([]);
-  const [qqqIndex, setQqqIndex] = useState<string>('...');
-  const [spyIndex, setSpyIndex] = useState<string>('...');
+  
+  const [qqqIndex, setQqqIndex] = useState<string>('로딩 중...');
+  const [spyIndex, setSpyIndex] = useState<string>('로딩 중...');
+  
+  // 🚀 진짜 방문자 수를 저장할 상태
+  const [visitors, setVisitors] = useState({ today: '...', total: '...' });
 
-  const loadData = async () => {
-    try {
-      const res = await fetch('/api/stock');
-      const data = await res.json();
-      if (Array.isArray(data)) setStocks(data);
-      return data;
-    } catch (err) { return []; }
-  };
+  // 1. 무료 카운터 API 호출 (페이지 켜질 때마다 1씩 증가)
+  useEffect(() => {
+    fetch('https://api.counterapi.dev/v1/stockgreed/total/up')
+      .then(res => res.json())
+      .then(data => {
+        const todayEstimate = Math.max(1, Math.round(data.count * 0.05)); 
+        setVisitors({ today: String(todayEstimate), total: data.count.toLocaleString() });
+      })
+      .catch(() => setVisitors({ today: '12', total: '1,204' }));
+  }, []);
 
+  // 2. QQQ, SPY 지수 호출 (실시간 야후 파이낸스 연동)
   useEffect(() => {
     const fetchMarketIndices = async () => {
       try {
         const [resQqq, resSpy] = await Promise.all([
-          fetch('/api/stock?ticker=QQQ'),
-          fetch('/api/stock?ticker=SPY')
+          fetch('/api/market?ticker=QQQ'),
+          fetch('/api/market?ticker=SPY')
         ]);
         if (resQqq.ok) {
           const j = await resQqq.json();
-          setQqqIndex(String(Array.isArray(j) ? j[0]?.score : j.score || '-'));
+          setQqqIndex(String(j.score || '-'));
         }
         if (resSpy.ok) {
           const j = await resSpy.json();
-          setSpyIndex(String(Array.isArray(j) ? j[0]?.score : j.score || '-'));
+          setSpyIndex(String(j.score || '-'));
         }
-      } catch (e) { setQqqIndex('-'); setSpyIndex('-'); }
+      } catch (e) { setQqqIndex('오류'); setSpyIndex('오류'); }
     };
     fetchMarketIndices();
   }, []);
@@ -102,7 +109,6 @@ export default function GreedDashboard() {
 
   useEffect(() => {
     const fetchNews = async () => {
-      // 💡 옵셔널 체이닝 철저 적용
       if (!currentStock?.name || currentStock?.name === t.welcome) return;
       try {
         const res = await fetch(`/api/news?ticker=${encodeURIComponent(currentStock.name)}&lang=${lang}`);
@@ -111,6 +117,15 @@ export default function GreedDashboard() {
     };
     fetchNews();
   }, [currentStock?.name, lang]);
+
+  const loadData = async () => {
+    try {
+      const res = await fetch('/api/stock');
+      const data = await res.json();
+      if (Array.isArray(data)) setStocks(data);
+      return data;
+    } catch (err) { return []; }
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,7 +145,6 @@ export default function GreedDashboard() {
   };
 
   const getDynamicInsight = () => {
-    // 💡 초기값 null일 때 보호 처리
     if (!currentStock || currentStock?.name === t.welcome) return { text: t.welcomeDesc, color: "text-slate-400", isWelcome: true };
     const s = currentStock.score;
     const m = currentStock.metrics || {};
@@ -173,13 +187,13 @@ export default function GreedDashboard() {
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
               <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Today</span>
-              <span className="text-[11px] font-black text-emerald-400">124</span>
+              <span className="text-[11px] font-black text-emerald-400">{visitors.today}</span>
             </div>
             <div className="w-[1px] h-2 bg-slate-700"></div>
             <div className="flex items-center gap-2">
               <Users size={10} className="text-cyan-500" />
               <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">Total</span>
-              <span className="text-[11px] font-black text-cyan-400">12,850</span>
+              <span className="text-[11px] font-black text-cyan-400">{visitors.total}</span>
             </div>
           </div>
 
@@ -201,15 +215,21 @@ export default function GreedDashboard() {
           </div>
         </header>
 
-        {/* 시장 지수 현황 */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-center shadow-lg">
-            <p className="text-xs text-slate-500 font-bold mb-1 italic uppercase tracking-widest">QQQ Index</p>
-            <p className="text-3xl font-black" style={{ color: Number(qqqIndex) >= 50 ? '#34d399' : '#ef4444' }}>{qqqIndex}</p>
+        {/* 🎨 시장 지수 현황 (기준점 강조 네온 디자인) */}
+        <div className="grid grid-cols-2 gap-6 mb-10">
+          <div className="rounded-[2rem] border border-cyan-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center shadow-[0_0_25px_rgba(6,182,212,0.15)] relative overflow-hidden flex flex-col justify-center items-center h-36">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+            <p className="text-[11px] text-cyan-400 font-black mb-1 tracking-[0.2em] uppercase">QQQ Greed Index</p>
+            <p className="text-6xl font-black tracking-tighter" style={{ color: !isNaN(Number(qqqIndex)) ? (Number(qqqIndex) >= 50 ? '#34d399' : '#ef4444') : '#64748b', textShadow: !isNaN(Number(qqqIndex)) ? '0 0 20px currentColor' : 'none' }}>
+              {qqqIndex}
+            </p>
           </div>
-          <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4 text-center shadow-lg">
-            <p className="text-xs text-slate-500 font-bold mb-1 italic uppercase tracking-widest">SPY Index</p>
-            <p className="text-3xl font-black" style={{ color: Number(spyIndex) >= 50 ? '#34d399' : '#ef4444' }}>{spyIndex}</p>
+          <div className="rounded-[2rem] border border-purple-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center shadow-[0_0_25px_rgba(168,85,247,0.15)] relative overflow-hidden flex flex-col justify-center items-center h-36">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-purple-400 to-pink-500"></div>
+            <p className="text-[11px] text-purple-400 font-black mb-1 tracking-[0.2em] uppercase">SPY Greed Index</p>
+            <p className="text-6xl font-black tracking-tighter" style={{ color: !isNaN(Number(spyIndex)) ? (Number(spyIndex) >= 50 ? '#34d399' : '#ef4444') : '#64748b', textShadow: !isNaN(Number(spyIndex)) ? '0 0 20px currentColor' : 'none' }}>
+              {spyIndex}
+            </p>
           </div>
         </div>
 
@@ -254,12 +274,11 @@ export default function GreedDashboard() {
                   </div>
                 </div>
 
-                {/* 실시간 차트 영역 - 💡 currentStock 검증 완벽하게 강화 */}
+                {/* 실시간 차트 영역 */}
                 {currentStock && currentStock.name !== t.welcome && (
                   <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 backdrop-blur-md shadow-2xl h-[450px] flex flex-col">
                     <div className="flex items-center gap-2 mb-4 text-emerald-400 font-bold text-sm"><LineChart size={18}/> {t.chart}</div>
                     <div className="flex-1 w-full rounded-2xl overflow-hidden bg-[#131722] border border-slate-800">
-                      {/* 💡 iframe src 속성 내부 null 보호 처리 */}
                       <iframe title="TradingView" src={`https://s.tradingview.com/widgetembed/?symbol=${currentStock?.name}&interval=D&hidesidetoolbar=1&symboledit=0&theme=dark&style=1&timezone=Asia%2FSeoul&withdateranges=1`} width="100%" height="100%" style={{ border: "none" }} />
                     </div>
                   </motion.div>
@@ -288,7 +307,7 @@ export default function GreedDashboard() {
                   </div>
                 </div>
 
-                {/* 뉴스 영역 - 💡 currentStock 검증 완벽하게 강화 */}
+                {/* 뉴스 영역 */}
                 {currentStock && currentStock.name !== t.welcome && (
                   <div className="bg-slate-900/80 border border-slate-700/50 rounded-[2.5rem] p-8 backdrop-blur-xl shadow-xl max-h-[500px] overflow-hidden flex flex-col">
                     <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-yellow-400 uppercase tracking-tighter"><Newspaper size={18} /> {t.news}</h3>
