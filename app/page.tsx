@@ -68,25 +68,38 @@ export default function GreedDashboard() {
     }
   };
 
+ // 📡 💡 수정됨: QQQ와 SPY 지수를 순차적으로 안전하게 불러오고 에러를 처리하는 로직
   useEffect(() => {
-    const fetchRealNews = async () => {
-      if (!currentStock || !currentStock.name || currentStock.name === t.welcome) {
-        setNews([]);
-        return;
-      }
+    const fetchMarketIndices = async () => {
       try {
-        const res = await fetch(`/api/news?ticker=${encodeURIComponent(currentStock.name)}&lang=${lang}`);
-        if (res.ok) {
-          const data = await res.json();
-          setNews(data);
+        // 1. QQQ 먼저 안전하게 호출
+        const resQqq = await fetch('/api/stock?ticker=QQQ');
+        if (resQqq.ok) {
+          const jsonQqq = await resQqq.json();
+          if (Array.isArray(jsonQqq) && jsonQqq.length > 0) setQqqIndex(String(jsonQqq[0].score));
+          else setQqqIndex('-');
+        } else {
+          setQqqIndex('-'); // API 한도 초과(404) 시 무한 로딩 방지
         }
-      } catch (err) {
-        setNews([]);
+
+        // 2. QQQ가 완전히 끝난 후 SPY 호출 (동시 접속 차단 방지)
+        const resSpy = await fetch('/api/stock?ticker=SPY');
+        if (resSpy.ok) {
+          const jsonSpy = await resSpy.json();
+          if (Array.isArray(jsonSpy) && jsonSpy.length > 0) setSpyIndex(String(jsonSpy[0].score));
+          else setSpyIndex('-');
+        } else {
+          setSpyIndex('-'); // API 한도 초과(404) 시 무한 로딩 방지
+        }
+
+      } catch (error) {
+        setQqqIndex('오류');
+        setSpyIndex('오류');
       }
     };
-    fetchRealNews();
-  }, [currentStock?.name, lang]);
 
+    fetchMarketIndices();
+  }, []);
   useEffect(() => {
     loadData().then(data => {
       const validStocks = data.filter((s:any) => s.score > 0);
