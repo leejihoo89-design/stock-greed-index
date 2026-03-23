@@ -99,7 +99,7 @@ export default function GreedDashboard() {
   useEffect(() => {
     const fetchSheetIndex = async () => {
       try {
-        const res = await fetch('/api/stock-data');
+        const res = await fetch('/api/stock-data?ticker=TSLA');
         const json = await res.json();
         if (res.ok && json.greedIndex !== undefined) {
           setSheetGreedIndex(String(json.greedIndex));
@@ -114,27 +114,38 @@ export default function GreedDashboard() {
     fetchSheetIndex();
   }, []);
 
+ // 🚀 새로고침된 초고속 검색 함수
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm || isQuerying) return;
+    
+    // 한국어 검색 시 티커로 변환 (예: 삼성전자 -> 005930)
     let targetTicker = koreanStockMap[searchTerm.trim()] || searchTerm.trim().toUpperCase();
-    const found = stocks.find((s: any) => s.name === targetTicker);
-    if (found) { 
-      if (found.score === -1) { alert(t.error); setSearchTerm(''); return; }
-      setCurrentStock(found); 
-      setSearchTerm('');
-    } else {
-      setIsQuerying(true);
-      await fetch(`/api/stock?ticker=${targetTicker}`, { cache: 'no-store' });
-      setTimeout(async () => {
-        const newData = await loadData();
-        const newlyAdded = newData.find((s: any) => s.name === targetTicker);
-        if (newlyAdded && newlyAdded.score !== -1) setCurrentStock(newlyAdded);
-        else alert(t.error);
-        setIsQuerying(false);
-        setSearchTerm('');
-      }, 12000);
+
+    setIsQuerying(true); // 로딩 화면 켜기
+    try {
+      // 1. 우리가 완성한 구글 시트 API로 바로 직행!
+      const res = await fetch(`/api/stock-data?ticker=${targetTicker}`, { cache: 'no-store' });
+      const data = await res.json();
+
+      // 2. 시트에서 점수를 성공적으로 가져왔다면? 화면 차트에 즉시 적용!
+      if (res.ok && data.greedIndex) {
+        setCurrentStock({
+          name: data.ticker,
+          score: Number(data.greedIndex), // 시트에서 가져온 점수!
+          time: "Live Data",
+          // (참고: 시트에 7대 지표 데이터가 없다면 기본값 50으로 세팅합니다)
+          metrics: { momentum: 50, rsi: 50, supply: 50, sentiment: 50, volatility: 50, short_risk: 50, relative_gain: 50 }
+        });
+      } else {
+        alert(t.error); // 시트에 종목이 없으면 에러 팝업
+      }
+    } catch (err) {
+      alert(t.error);
     }
+    
+    setIsQuerying(false); // 로딩 화면 끄기
+    setSearchTerm('');    // 검색창 비우기
   };
 
   const getTradingViewSymbol = (ticker: string) => {
