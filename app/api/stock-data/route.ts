@@ -17,10 +17,10 @@ export async function GET(request: Request) {
 
     const sheets = google.sheets({ version: 'v4', auth });
     
-    // 시트에서 넉넉하게 A1부터 E100까지 읽어옵니다.
+    // ⭐ 수정 1: A열부터 J열까지 넉넉하게 읽어옵니다. (C~I열의 7대 지표를 포함하기 위해)
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: process.env.GOOGLE_SHEET_ID,
-      range: 'Sheet1!A1:E100', 
+      range: 'Sheet1!A1:J100', 
     });
 
     const rows = response.data.values;
@@ -35,9 +35,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '종목을 찾을 수 없습니다.' }, { status: 404 });
     }
 
+    // ⭐ 수정 2: 찾은 줄에서 7대 지표 데이터를 뽑아서 함께 반환합니다.
     return NextResponse.json({
-      ticker: row[0],
-      greedIndex: row[1], // 시트 B열에 숫자가 있다고 가정
+      ticker: row[0],             // A열: 종목명
+      greedIndex: row[1],         // B열: 탐욕 지수
+      metrics: {
+        momentum: Number(row[2]) || 50,      // C열: 모멘텀
+        rsi: Number(row[3]) || 50,           // D열: RSI
+        supply: Number(row[4]) || 50,        // E열: 수급
+        sentiment: Number(row[5]) || 50,     // F열: 심리
+        volatility: Number(row[6]) || 50,    // G열: 변동성
+        short_risk: Number(row[7]) || 50,    // H열: 공매도 리스크
+        relative_gain: Number(row[8]) || 50  // I열: 상대 수익률
+      }
     });
 
   } catch (error: any) {

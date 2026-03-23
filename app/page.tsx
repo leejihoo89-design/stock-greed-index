@@ -51,16 +51,18 @@ export default function GreedDashboard() {
   const [news, setNews] = useState<any[]>([]);
   const [sheetGreedIndex, setSheetGreedIndex] = useState<string>('불러오는 중...');
 
+  // 📡 데이터 로드 함수
   const loadData = async () => {
     try {
-      const res = await fetch('/api/stock', { cache: 'no-store' });
+      const res = await fetch('/api/stock');
+      if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
       const data = await res.json();
-      if (Array.isArray(data)) {
-        setStocks(data);
-        return data;
-      }
-    } catch (err) {}
-    return [];
+      setStocks(Array.isArray(data) ? data : []);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
   };
 
   useEffect(() => {
@@ -99,10 +101,12 @@ export default function GreedDashboard() {
   useEffect(() => {
     const fetchSheetIndex = async () => {
       try {
-        const res = await fetch('/api/stock-data?ticker=TSLA');
+        // [완전수정] 주소를 /api/stock으로 통일
+        const res = await fetch('/api/stock?ticker=TSLA');
         const json = await res.json();
-        if (res.ok && json.greedIndex !== undefined) {
-          setSheetGreedIndex(String(json.greedIndex));
+        // 데이터가 단일 객체이므로 json.score 사용
+        if (res.ok && json.score !== undefined) {
+          setSheetGreedIndex(String(json.score));
         } else {
           setSheetGreedIndex('데이터 없음');
         }
@@ -114,47 +118,72 @@ export default function GreedDashboard() {
     fetchSheetIndex();
   }, []);
 
- // 🚀 새로고침된 초고속 검색 함수
+  // 🚀 새로고침된 초고속 하이브리드 검색 함수
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm || isQuerying) return;
     
-    // 한국어 검색 시 티커로 변환 (예: 삼성전자 -> 005930)
     let targetTicker = koreanStockMap[searchTerm.trim()] || searchTerm.trim().toUpperCase();
+    setIsQuerying(true);
 
-    setIsQuerying(true); // 로딩 화면 켜기
     try {
-      // 1. 우리가 완성한 구글 시트 API로 바로 직행!
-      const res = await fetch(`/api/stock-data?ticker=${targetTicker}`, { cache: 'no-store' });
-      const data = await res.json();
+      // [완전수정] 주소를 /api/stock으로 통일
+      const sheetRes = await fetch(`/api/stock?ticker=${targetTicker}`, { cache: 'no-store' });
+      const sheetData = await sheetRes.json();
 
-      // 2. 시트에서 점수를 성공적으로 가져왔다면? 화면 차트에 즉시 적용!
-      if (res.ok && data.greedIndex) {
+      if (sheetRes.ok && sheetData.score !== undefined) {
         setCurrentStock({
-          name: data.ticker,
-          score: Number(data.greedIndex), // 시트에서 가져온 점수!
-          time: "Live Data",
-          // (참고: 시트에 7대 지표 데이터가 없다면 기본값 50으로 세팅합니다)
-          metrics: { momentum: 50, rsi: 50, supply: 50, sentiment: 50, volatility: 50, short_risk: 50, relative_gain: 50 }
+          name: sheetData.name,
+          score: Number(sheetData.score),
+          time: sheetData.time || "Live Data (Sheet)",
+          metrics: sheetData.metrics || { momentum: 50, rsi: 50, supply: 50, sentiment: 50, volatility: 50, short_risk: 50, relative_gain: 50 }
         });
-      } else {
-        alert(t.error); // 시트에 종목이 없으면 에러 팝업
+        setIsQuerying(false);
+        setSearchTerm('');
+        return; 
+      } 
+      
+      const foundInStocks = stocks.find((s: any) => s.name === targetTicker);
+      if (foundInStocks && foundInStocks.score !== -1) {
+        setCurrentStock(foundInStocks);
+        setIsQuerying(false);
+        setSearchTerm('');
+        return; 
       }
+
+      await fetch(`/api/stock?ticker=${targetTicker}`, { cache: 'no-store' });
+      
+      setTimeout(async () => {
+        const newData = await loadData();
+        const newlyAdded = newData.find((s: any) => s.name === targetTicker);
+        
+        if (newlyAdded && newlyAdded.score !== -1) {
+          setCurrentStock(newlyAdded);
+        } else {
+          alert(t.error); 
+        }
+        setIsQuerying(false);
+        setSearchTerm('');
+      }, 12000); 
+
     } catch (err) {
       alert(t.error);
+      setIsQuerying(false);
+      setSearchTerm('');
     }
-    
-    setIsQuerying(false); // 로딩 화면 끄기
-    setSearchTerm('');    // 검색창 비우기
   };
 
   const getTradingViewSymbol = (ticker: string) => {
     if (!ticker || ticker === t.welcome) return "NASDAQ:TSLA";
-    const cleanTicker = ticker.replace('.KS', '').replace('.KQ', '');
-    return /^\d+$/.test(cleanTicker) ? `KRX:${cleanTicker}` : cleanTicker;
+    const cleanTicker = ticker.replace('.KS', '').replace('.KQ', '').toUpperCase();
+    if (/^\d+$/.test(cleanTicker)) return `KRX:${cleanTicker}`;
+    const nasdaqStocks = ["TSLA", "AAPL", "NVDA", "MSFT", "IONQ", "LAES"];
+    const nyseStocks = ["PLUG"];
+    if (nasdaqStocks.includes(cleanTicker)) return `NASDAQ:${cleanTicker}`;
+    if (nyseStocks.includes(cleanTicker)) return `NYSE:${cleanTicker}`;
+    return `NASDAQ:${cleanTicker}`;
   };
 
-  // 🎨 데이터 인사이트 생성 함수 (색상 포함)
   const getDynamicInsight = () => {
     if (!currentStock || currentStock.name === t.welcome) {
       return { text: t.welcomeDesc, color: "text-slate-400", isWelcome: true };
@@ -246,7 +275,6 @@ export default function GreedDashboard() {
                     <GaugeComponent value={currentStock?.score || 50} arc={{ width: 0.15, padding: 0.01, subArcs: [{ limit: 25, color: '#ef4444' }, { limit: 45, color: '#f97316' }, { limit: 55, color: '#94a3b8' }, { limit: 75, color: '#22c55e' }, { limit: 100, color: '#10b981' }] }} pointer={{ type: "blob", animationDelay: 0, color: '#fff' }} labels={{ valueLabel: { formatTextValue: (value) => value.toString(), style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } } }} />
                   </div>
                   
-                  {/* ✨ 데이터 인사이트 박스 (색상 적용) */}
                   <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/30 mt-8">
                     <div className="flex items-center gap-2 mb-3 text-cyan-400 font-bold text-sm">
                       <BarChart3 size={16}/> {t.insight}
