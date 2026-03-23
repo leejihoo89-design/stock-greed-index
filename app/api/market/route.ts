@@ -1,9 +1,9 @@
+// app/api/market/route.ts
 import { NextResponse } from 'next/server';
 import yahooFinance from 'yahoo-finance2';
 
 export const dynamic = 'force-dynamic';
 
-// RSI(탐욕 지수) 계산 함수
 function calculateRSI(prices: number[]) {
   if (prices.length < 2) return 50;
   let gains = 0, losses = 0;
@@ -24,10 +24,9 @@ export async function GET(request: Request) {
   if (!ticker) return NextResponse.json({ error: '티커가 필요합니다.' }, { status: 400 });
 
   try {
-    const period1 = new Date();
-    period1.setDate(period1.getDate() - 20);
+    // 30일 전 날짜를 문자열로 안전하게 변환
+    const period1 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    // 💡 해결 포인트: as any[] 를 추가하여 TypeScript 빌드 에러를 완벽히 차단합니다.
     const historical = await yahooFinance.historical(ticker, {
       period1: period1,
       interval: '1d',
@@ -35,7 +34,6 @@ export async function GET(request: Request) {
 
     if (!historical || historical.length === 0) throw new Error("데이터 없음");
 
-    // 💡 해결 포인트: data: any 로 타입을 명시하여 안전하게 종가를 뽑아옵니다.
     const closePrices = historical.map((data: any) => data.close);
     const score = calculateRSI(closePrices);
 
@@ -43,6 +41,7 @@ export async function GET(request: Request) {
 
   } catch (error: any) {
     console.error(`[${ticker}] API 에러:`, error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    // 에러 발생 시 무한 로딩을 막기 위해 기본값(50) 반환
+    return NextResponse.json({ ticker, score: 50 });
   }
 }

@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { Search, TrendingUp, AlertCircle, Loader2, BarChart3, Activity, Users, Zap, ShieldAlert, Globe, Repeat, LineChart, Newspaper, Clock, Flame, Snowflake, Sparkles } from 'lucide-react';
+// 💡 Share2, Copy, MessageCircle 아이콘 추가됨
+import { Search, TrendingUp, AlertCircle, Loader2, BarChart3, Activity, Users, Zap, ShieldAlert, Globe, Repeat, LineChart, Newspaper, Clock, Flame, Snowflake, Sparkles, Share2, Copy, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const GaugeComponent = dynamic(() => import('react-gauge-component'), { ssr: false });
 
-// 🇰🇷 한국 주식 자동 변환 사전
 const koreanStockMap: Record<string, string> = {
   "삼성전자": "005930", "SK하이닉스": "000660", "현대차": "005380", "기아": "000270",
   "카카오": "035720", "네이버": "035420", "에코프로": "086520", "에코프로비엠": "247540",
@@ -25,24 +25,6 @@ const translations: any = {
     metrics: { momentum: "Momentum", rsi: "RSI Strength", supply: "Major Supply", sentiment: "Sentiment", volatility: "Volatility", short_risk: "Short Risk", relative_gain: "Relative Gain" },
     status: { extremeFear: "Extreme Fear", fear: "Fear", neutral: "Neutral", greed: "Greed", extremeGreed: "Extreme Greed" },
     rankingTitle: "🔥 Live Market Temperature", topGreed: "Top 5 Greed", topFear: "Top 5 Fear"
-  },
-  es: { 
-    title: "ÍNDICE DE CODICIA GLOBAL", search: "Ingrese ticker (ej: TSLA)", loading: "Obteniendo datos", aiText: "La IA está procesando...", welcome: "¡Bienvenido!", welcomeDesc: "Ingrese un ticker para comenzar.", wait: "Esperando...", fear: "MIEDO", greed: "CODICIA", insight: "Análisis de Datos", core: "7 Métricas Clave", chart: "Gráfico en Vivo", news: "Noticias en Vivo", error: "❌ Ticker no encontrado.",
-    metrics: { momentum: "Impulso", rsi: "Fuerza RSI", supply: "Oferta", sentiment: "Sentimiento", volatility: "Volatilidad", short_risk: "Riesgo", relative_gain: "Ganancia" },
-    status: { extremeFear: "Miedo Extremo", fear: "Miedo", neutral: "Neutral", greed: "Codicia", extremeGreed: "Codicia Extrema" },
-    rankingTitle: "🔥 Temperatura del Mercado", topGreed: "Top 5 Codicia", topFear: "Top 5 Miedo"
-  },
-  ja: { 
-    title: "グローバル強欲指数", search: "銘柄名入力 (例: TSLA)", loading: "取得中...", aiText: "AIが演算中...", welcome: "ようこそ！", welcomeDesc: "銘柄を入力してください。", wait: "待機中...", fear: "強欲", greed: "恐怖", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "チャート", news: "ニュース", error: "❌ 無効な銘柄です。",
-    metrics: { momentum: "モメンタム", rsi: "RSI強度", supply: "需給", sentiment: "心理", volatility: "変動性", short_risk: "リスク", relative_gain: "収益率" },
-    status: { extremeFear: "極度の恐怖", fear: "恐怖", neutral: "中立", greed: "強欲", extremeGreed: "極度の強欲" },
-    rankingTitle: "🔥 市場温度", topGreed: "強欲 Top 5", topFear: "恐怖 Top 5"
-  },
-  zh: { 
-    title: "全球贪婪指数", search: "输入代码 (如: TSLA)", loading: "获取中...", aiText: "AI 正在计算...", welcome: "欢迎！", welcomeDesc: "请输入代码开始分析。", wait: "等待中...", fear: "恐惧", greed: "贪婪", insight: "数据洞察", core: "7大核心指标", chart: "实时日K线", news: "实时新闻", error: "❌ 代码不存在。",
-    metrics: { momentum: "动量强度", rsi: "RSI 强度", supply: "主要资金", sentiment: "市场情绪", volatility: "波动率", short_risk: "做空风险", relative_gain: "相对收益" },
-    status: { extremeFear: "极度恐惧", fear: "恐惧", neutral: "中立", greed: "贪婪", extremeGreed: "极度贪婪" },
-    rankingTitle: "🔥 实时市场热度", topGreed: "贪婪排行榜 Top 5", topFear: "恐惧排行榜 Top 5"
   }
 };
 
@@ -58,21 +40,34 @@ export default function GreedDashboard() {
   const [qqqIndex, setQqqIndex] = useState<string>('로딩 중...');
   const [spyIndex, setSpyIndex] = useState<string>('로딩 중...');
   
-  // 🚀 진짜 방문자 수를 저장할 상태
+  // 💡 카운터 및 공유 상태 추가
   const [visitors, setVisitors] = useState({ today: '...', total: '...' });
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
-  // 1. 무료 카운터 API 호출 (페이지 켜질 때마다 1씩 증가)
+  // 🚀 1. 진짜 일일/누적 방문자 카운터 (매일 00시 리셋 적용)
   useEffect(() => {
-    fetch('https://api.counterapi.dev/v1/stockgreed/total/up')
-      .then(res => res.json())
-      .then(data => {
-        const todayEstimate = Math.max(1, Math.round(data.count * 0.05)); 
-        setVisitors({ today: String(todayEstimate), total: data.count.toLocaleString() });
-      })
-      .catch(() => setVisitors({ today: '12', total: '1,204' }));
+    const fetchVisitors = async () => {
+      try {
+        // 한국 시간 기준 오늘 날짜 (예: "20260323")
+        const todayStr = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).replace(/[^0-9]/g, '');
+
+        const [totalRes, todayRes] = await Promise.all([
+          fetch('https://api.counterapi.dev/v1/stockgreed_app/total/up'),
+          fetch(`https://api.counterapi.dev/v1/stockgreed_app/today_${todayStr}/up`)
+        ]);
+        
+        const totalData = await totalRes.json();
+        const todayData = await todayRes.json();
+        
+        setVisitors({ today: todayData.count.toLocaleString(), total: totalData.count.toLocaleString() });
+      } catch (e) {
+        setVisitors({ today: '1', total: '1' });
+      }
+    };
+    fetchVisitors();
   }, []);
 
-  // 2. QQQ, SPY 지수 호출 (실시간 야후 파이낸스 연동)
+  // 🚀 2. QQQ, SPY 지수 실시간 호출 (에러 방어 강화)
   useEffect(() => {
     const fetchMarketIndices = async () => {
       try {
@@ -80,18 +75,50 @@ export default function GreedDashboard() {
           fetch('/api/market?ticker=QQQ'),
           fetch('/api/market?ticker=SPY')
         ]);
+        
         if (resQqq.ok) {
           const j = await resQqq.json();
-          setQqqIndex(String(j.score || '-'));
-        }
+          setQqqIndex(String(j.score || '50'));
+        } else { setQqqIndex('데이터 없음'); }
+        
         if (resSpy.ok) {
           const j = await resSpy.json();
-          setSpyIndex(String(j.score || '-'));
-        }
+          setSpyIndex(String(j.score || '50'));
+        } else { setSpyIndex('데이터 없음'); }
+        
       } catch (e) { setQqqIndex('오류'); setSpyIndex('오류'); }
     };
     fetchMarketIndices();
   }, []);
+
+  // 🚀 3. 공유하기 기능 로직
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    alert("사이트 주소가 복사되었습니다!\n원하는 곳에 붙여넣기(Ctrl+V) 하세요.");
+    setIsShareOpen(false);
+  };
+
+  const handleNativeShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'GLOBAL GREED INDEX',
+        text: '현재 미국 주식 시장의 실시간 공포/탐욕 지수를 확인해보세요!',
+        url: window.location.href,
+      }).catch((error) => console.log('공유 실패', error));
+    } else {
+      handleCopyLink();
+    }
+    setIsShareOpen(false);
+  };
+
+  const loadData = async () => {
+    try {
+      const res = await fetch('/api/stock');
+      const data = await res.json();
+      if (Array.isArray(data)) setStocks(data);
+      return data;
+    } catch (err) { return []; }
+  };
 
   useEffect(() => {
     loadData().then(data => {
@@ -117,15 +144,6 @@ export default function GreedDashboard() {
     };
     fetchNews();
   }, [currentStock?.name, lang]);
-
-  const loadData = async () => {
-    try {
-      const res = await fetch('/api/stock');
-      const data = await res.json();
-      if (Array.isArray(data)) setStocks(data);
-      return data;
-    } catch (err) { return []; }
-  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,8 +199,9 @@ export default function GreedDashboard() {
     <main className="min-h-screen bg-[#0a0f1c] text-slate-100 p-4 md:p-10 font-sans relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
         
-        {/* 🚀 헤더: 방문자 카운터 및 5개국어 선택 */}
+        {/* 🚀 헤더: 방문자 카운터 및 메뉴 */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-8 relative">
+          
           <div className="absolute -top-10 left-0 flex items-center gap-4 bg-slate-900/60 px-4 py-1.5 rounded-full border border-slate-800/50 backdrop-blur-md shadow-sm">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
@@ -197,16 +216,45 @@ export default function GreedDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 mt-2 md:mt-0">
-            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+          <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
+            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mr-2">
               {t.title}
             </h1>
+            
             <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors">
-              <option value="ko">🇰🇷 KOR</option><option value="en">🇺🇸 ENG</option><option value="es">🇪🇸 ESP</option><option value="ja">🇯🇵 JPN</option><option value="zh">🇨🇳 CHN</option>
+              <option value="ko">🇰🇷 KOR</option><option value="en">🇺🇸 ENG</option>
             </select>
+
+            {/* 🚀 공유하기 메뉴 추가 */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsShareOpen(!isShareOpen)} 
+                className="flex items-center gap-1.5 bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold hover:bg-slate-700 transition-colors"
+              >
+                <Share2 size={14} />
+                <span className="hidden sm:inline">공유</span>
+              </button>
+              
+              {isShareOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                  <button 
+                    onClick={handleNativeShare}
+                    className="w-full text-left px-4 py-3 text-sm hover:bg-yellow-400/10 hover:text-yellow-400 flex items-center gap-3 transition-colors"
+                  >
+                    <MessageCircle size={16} className="text-yellow-400" /> 친구에게 공유하기
+                  </button>
+                  <button 
+                    onClick={handleCopyLink}
+                    className="w-full text-left px-4 py-3 text-sm hover:bg-slate-700 flex items-center gap-3 transition-colors border-t border-slate-700/50"
+                  >
+                    <Copy size={16} className="text-slate-400" /> 주소 복사하기
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           
-          <div className="relative w-full md:w-96 flex flex-col items-end">
+          <div className="relative w-full md:w-96 flex flex-col items-end mt-4 md:mt-0">
             <form onSubmit={handleSearch} className="relative w-full">
               <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={t.search} className="w-full bg-slate-800/40 border border-slate-700/50 rounded-2xl py-3.5 px-12 focus:ring-2 focus:ring-cyan-500 outline-none transition-all text-sm" />
               <Search className="absolute left-4 top-4 text-slate-500" size={18} />
@@ -244,7 +292,6 @@ export default function GreedDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:col-span-2 flex flex-col gap-6">
                 
-                {/* 메인 분석 카드 */}
                 <div className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
                   <div className="text-center mb-10">
                     <h2 className="text-5xl font-black tracking-tight mb-2">{currentStock?.name}</h2>
@@ -274,7 +321,6 @@ export default function GreedDashboard() {
                   </div>
                 </div>
 
-                {/* 실시간 차트 영역 */}
                 {currentStock && currentStock.name !== t.welcome && (
                   <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 backdrop-blur-md shadow-2xl h-[450px] flex flex-col">
                     <div className="flex items-center gap-2 mb-4 text-emerald-400 font-bold text-sm"><LineChart size={18}/> {t.chart}</div>
@@ -285,7 +331,6 @@ export default function GreedDashboard() {
                 )}
               </motion.div>
 
-              {/* 우측 사이드바: 7대 지표 및 뉴스 */}
               <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex flex-col gap-6">
                 <div className="bg-slate-900/80 border border-slate-700/50 rounded-[2.5rem] p-8 backdrop-blur-xl shadow-xl">
                   <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-cyan-400 uppercase tracking-tighter"><Zap size={18} /> {t.core}</h3>
@@ -307,7 +352,6 @@ export default function GreedDashboard() {
                   </div>
                 </div>
 
-                {/* 뉴스 영역 */}
                 {currentStock && currentStock.name !== t.welcome && (
                   <div className="bg-slate-900/80 border border-slate-700/50 rounded-[2.5rem] p-8 backdrop-blur-xl shadow-xl max-h-[500px] overflow-hidden flex flex-col">
                     <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-yellow-400 uppercase tracking-tighter"><Newspaper size={18} /> {t.news}</h3>
@@ -328,7 +372,6 @@ export default function GreedDashboard() {
           )}
         </AnimatePresence>
 
-        {/* 하단 랭킹 섹션 */}
         {!isQuerying && validStocks.length > 0 && (
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8 bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-8 backdrop-blur-md shadow-xl">
             <h3 className="text-xl font-bold mb-8 text-center text-slate-200 uppercase tracking-widest">{t.rankingTitle}</h3>
