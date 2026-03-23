@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "axios": "^1.13.6",
     "framer-motion": "^12.38.0",
     "google-auth-library": "^10.6.2",
     "google-spreadsheet": "^5.2.0",
@@ -18,7 +19,8 @@
     "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-gauge-component": "^2.0.26"
+    "react-gauge-component": "^2.0.26",
+    "yahoo-finance2": "^3.13.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
