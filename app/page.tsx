@@ -102,7 +102,8 @@ export default function GreedDashboard() {
 
   useEffect(() => {
     const fetchNews = async () => {
-      if (!currentStock?.name || currentStock.name === t.welcome) return;
+      // 💡 옵셔널 체이닝 철저 적용
+      if (!currentStock?.name || currentStock?.name === t.welcome) return;
       try {
         const res = await fetch(`/api/news?ticker=${encodeURIComponent(currentStock.name)}&lang=${lang}`);
         if (res.ok) setNews(await res.json());
@@ -129,7 +130,8 @@ export default function GreedDashboard() {
   };
 
   const getDynamicInsight = () => {
-    if (!currentStock || currentStock.name === t.welcome) return { text: t.welcomeDesc, color: "text-slate-400", isWelcome: true };
+    // 💡 초기값 null일 때 보호 처리
+    if (!currentStock || currentStock?.name === t.welcome) return { text: t.welcomeDesc, color: "text-slate-400", isWelcome: true };
     const s = currentStock.score;
     const m = currentStock.metrics || {};
     let status = "", color = "";
@@ -252,12 +254,13 @@ export default function GreedDashboard() {
                   </div>
                 </div>
 
-                {/* 실시간 차트 영역 */}
-                {currentStock?.name !== t.welcome && (
+                {/* 실시간 차트 영역 - 💡 currentStock 검증 완벽하게 강화 */}
+                {currentStock && currentStock.name !== t.welcome && (
                   <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 backdrop-blur-md shadow-2xl h-[450px] flex flex-col">
                     <div className="flex items-center gap-2 mb-4 text-emerald-400 font-bold text-sm"><LineChart size={18}/> {t.chart}</div>
                     <div className="flex-1 w-full rounded-2xl overflow-hidden bg-[#131722] border border-slate-800">
-                      <iframe title="TradingView" src={`https://s.tradingview.com/widgetembed/?symbol=${currentStock.name}&interval=D&hidesidetoolbar=1&symboledit=0&theme=dark&style=1&timezone=Asia%2FSeoul&withdateranges=1`} width="100%" height="100%" style={{ border: "none" }} />
+                      {/* 💡 iframe src 속성 내부 null 보호 처리 */}
+                      <iframe title="TradingView" src={`https://s.tradingview.com/widgetembed/?symbol=${currentStock?.name}&interval=D&hidesidetoolbar=1&symboledit=0&theme=dark&style=1&timezone=Asia%2FSeoul&withdateranges=1`} width="100%" height="100%" style={{ border: "none" }} />
                     </div>
                   </motion.div>
                 )}
@@ -285,7 +288,8 @@ export default function GreedDashboard() {
                   </div>
                 </div>
 
-                {currentStock?.name !== t.welcome && (
+                {/* 뉴스 영역 - 💡 currentStock 검증 완벽하게 강화 */}
+                {currentStock && currentStock.name !== t.welcome && (
                   <div className="bg-slate-900/80 border border-slate-700/50 rounded-[2.5rem] p-8 backdrop-blur-xl shadow-xl max-h-[500px] overflow-hidden flex flex-col">
                     <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-yellow-400 uppercase tracking-tighter"><Newspaper size={18} /> {t.news}</h3>
                     <div className="flex flex-col gap-5 overflow-y-auto pr-2 custom-scrollbar">
