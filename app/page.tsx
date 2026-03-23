@@ -51,7 +51,7 @@ export default function GreedDashboard() {
   const [news, setNews] = useState<any[]>([]);
   const [sheetGreedIndex, setSheetGreedIndex] = useState<string>('불러오는 중...');
 
-  // 📡 데이터 로드 함수
+  // 📡 초기 전체 데이터 로드
   const loadData = async () => {
     try {
       const res = await fetch('/api/stock');
@@ -98,15 +98,15 @@ export default function GreedDashboard() {
     });
   }, []);
 
+  // 📡 메인 시트 탐욕 지수 로드
   useEffect(() => {
     const fetchSheetIndex = async () => {
       try {
-        // [완전수정] 주소를 /api/stock으로 통일
         const res = await fetch('/api/stock?ticker=TSLA');
         const json = await res.json();
-        // 데이터가 단일 객체이므로 json.score 사용
-        if (res.ok && json.score !== undefined) {
-          setSheetGreedIndex(String(json.score));
+        // 💡 API가 배열로 응답하므로 json[0].score 사용
+        if (res.ok && Array.isArray(json) && json.length > 0) {
+          setSheetGreedIndex(String(json[0].score));
         } else {
           setSheetGreedIndex('데이터 없음');
         }
@@ -118,7 +118,7 @@ export default function GreedDashboard() {
     fetchSheetIndex();
   }, []);
 
-  // 🚀 새로고침된 초고속 하이브리드 검색 함수
+  // 🚀 새로고침된 초고속 하이브리드 검색 함수 (12초 대기 버그 삭제)
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm || isQuerying) return;
@@ -127,22 +127,7 @@ export default function GreedDashboard() {
     setIsQuerying(true);
 
     try {
-      // [완전수정] 주소를 /api/stock으로 통일
-      const sheetRes = await fetch(`/api/stock?ticker=${targetTicker}`, { cache: 'no-store' });
-      const sheetData = await sheetRes.json();
-
-      if (sheetRes.ok && sheetData.score !== undefined) {
-        setCurrentStock({
-          name: sheetData.name,
-          score: Number(sheetData.score),
-          time: sheetData.time || "Live Data (Sheet)",
-          metrics: sheetData.metrics || { momentum: 50, rsi: 50, supply: 50, sentiment: 50, volatility: 50, short_risk: 50, relative_gain: 50 }
-        });
-        setIsQuerying(false);
-        setSearchTerm('');
-        return; 
-      } 
-      
+      // 1. 이미 불러온 목록(stocks)에 캐시된 데이터가 있는지 먼저 확인
       const foundInStocks = stocks.find((s: any) => s.name === targetTicker);
       if (foundInStocks && foundInStocks.score !== -1) {
         setCurrentStock(foundInStocks);
@@ -151,23 +136,32 @@ export default function GreedDashboard() {
         return; 
       }
 
-      await fetch(`/api/stock?ticker=${targetTicker}`, { cache: 'no-store' });
+      // 2. 목록에 없으면 API로 즉시 실시간 데이터 요청
+      const res = await fetch(`/api/stock?ticker=${targetTicker}`, { cache: 'no-store' });
       
-      setTimeout(async () => {
-        const newData = await loadData();
-        const newlyAdded = newData.find((s: any) => s.name === targetTicker);
+      if (res.ok) {
+        const data = await res.json();
         
-        if (newlyAdded && newlyAdded.score !== -1) {
-          setCurrentStock(newlyAdded);
+        // 💡 API가 보내준 배열 데이터 첫 번째 요소를 화면에 바로 띄움
+        if (Array.isArray(data) && data.length > 0) {
+          setCurrentStock(data[0]);
+          
+          // 실시간으로 긁어온 데이터를 하단 랭킹(stocks)에도 즉시 추가
+          setStocks(prev => {
+            if (!prev.find(s => s.name === data[0].name)) {
+              return [...prev, data[0]];
+            }
+            return prev;
+          });
         } else {
-          alert(t.error); 
+          alert(t.error); // 데이터가 빈 배열로 오면 에러
         }
-        setIsQuerying(false);
-        setSearchTerm('');
-      }, 12000); 
-
+      } else {
+        alert(t.error); // 404 등 네트워크 에러
+      }
     } catch (err) {
-      alert(t.error);
+      alert("데이터를 불러오는 중 오류가 발생했습니다.");
+    } finally {
       setIsQuerying(false);
       setSearchTerm('');
     }
