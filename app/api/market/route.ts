@@ -1,10 +1,9 @@
-// app/api/market/route.ts
 import { NextResponse } from 'next/server';
 import yahooFinance from 'yahoo-finance2';
 
-export const dynamic = 'force-dynamic'; // 항상 실시간으로 작동하게 만듦
+export const dynamic = 'force-dynamic';
 
-// 간단한 RSI(상대강도지수) 계산 공식 (탐욕 지수로 활용)
+// RSI(탐욕 지수) 계산 함수
 function calculateRSI(prices: number[]) {
   if (prices.length < 2) return 50;
   let gains = 0, losses = 0;
@@ -25,19 +24,19 @@ export async function GET(request: Request) {
   if (!ticker) return NextResponse.json({ error: '티커가 필요합니다.' }, { status: 400 });
 
   try {
-    // 1. 최근 14일치 데이터 가져오기
     const period1 = new Date();
-    period1.setDate(period1.getDate() - 20); // 주말 고려해서 20일 전부터
+    period1.setDate(period1.getDate() - 20);
     
+    // 💡 해결 포인트: as any[] 를 추가하여 TypeScript 빌드 에러를 완벽히 차단합니다.
     const historical = await yahooFinance.historical(ticker, {
       period1: period1,
       interval: '1d',
-    });
+    }) as any[];
 
     if (!historical || historical.length === 0) throw new Error("데이터 없음");
 
-    // 2. 종가(Close)만 뽑아서 탐욕 지수(RSI) 계산
-    const closePrices = historical.map(data => data.close);
+    // 💡 해결 포인트: data: any 로 타입을 명시하여 안전하게 종가를 뽑아옵니다.
+    const closePrices = historical.map((data: any) => data.close);
     const score = calculateRSI(closePrices);
 
     return NextResponse.json({ ticker, score });
