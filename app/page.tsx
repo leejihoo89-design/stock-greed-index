@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-// 💡 Share2, Copy, MessageCircle 아이콘 추가됨
 import { Search, TrendingUp, AlertCircle, Loader2, BarChart3, Activity, Users, Zap, ShieldAlert, Globe, Repeat, LineChart, Newspaper, Clock, Flame, Snowflake, Sparkles, Share2, Copy, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,6 +24,24 @@ const translations: any = {
     metrics: { momentum: "Momentum", rsi: "RSI Strength", supply: "Major Supply", sentiment: "Sentiment", volatility: "Volatility", short_risk: "Short Risk", relative_gain: "Relative Gain" },
     status: { extremeFear: "Extreme Fear", fear: "Fear", neutral: "Neutral", greed: "Greed", extremeGreed: "Extreme Greed" },
     rankingTitle: "🔥 Live Market Temperature", topGreed: "Top 5 Greed", topFear: "Top 5 Fear"
+  },
+  es: { 
+    title: "ÍNDICE DE CODICIA GLOBAL", search: "Ingrese ticker (ej: TSLA)", loading: "Obteniendo datos", aiText: "La IA está procesando...", welcome: "¡Bienvenido!", welcomeDesc: "Ingrese un ticker para comenzar.", wait: "Esperando...", fear: "MIEDO", greed: "CODICIA", insight: "Análisis de Datos", core: "7 Métricas Clave", chart: "Gráfico en Vivo", news: "Noticias en Vivo", error: "❌ Ticker no encontrado.",
+    metrics: { momentum: "Impulso", rsi: "Fuerza RSI", supply: "Oferta", sentiment: "Sentimiento", volatility: "Volatilidad", short_risk: "Riesgo", relative_gain: "Ganancia" },
+    status: { extremeFear: "Miedo Extremo", fear: "Miedo", neutral: "Neutral", greed: "Codicia", extremeGreed: "Codicia Extrema" },
+    rankingTitle: "🔥 Temperatura del Mercado", topGreed: "Top 5 Codicia", topFear: "Top 5 Miedo"
+  },
+  ja: { 
+    title: "グローバル強欲指数", search: "銘柄名入力 (例: TSLA)", loading: "取得中...", aiText: "AIが演算中...", welcome: "ようこそ！", welcomeDesc: "銘柄を入力してください。", wait: "待機中...", fear: "強欲", greed: "恐怖", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "チャート", news: "ニュース", error: "❌ 無効な銘柄です。",
+    metrics: { momentum: "モメンタム", rsi: "RSI強度", supply: "需給", sentiment: "心理", volatility: "変動性", short_risk: "リスク", relative_gain: "収益率" },
+    status: { extremeFear: "極度の恐怖", fear: "恐怖", neutral: "中立", greed: "強欲", extremeGreed: "極度の強欲" },
+    rankingTitle: "🔥 市場温度", topGreed: "強欲 Top 5", topFear: "恐怖 Top 5"
+  },
+  zh: { 
+    title: "全球贪婪指数", search: "输入代码 (如: TSLA)", loading: "获取中...", aiText: "AI 正在计算...", welcome: "欢迎！", welcomeDesc: "请输入代码开始分析。", wait: "等待中...", fear: "恐惧", greed: "贪婪", insight: "数据洞察", core: "7大核心指标", chart: "实时日K线", news: "实时新闻", error: "❌ 代码不存在。",
+    metrics: { momentum: "动量强度", rsi: "RSI 强度", supply: "主要资金", sentiment: "市场情绪", volatility: "波动率", short_risk: "做空风险", relative_gain: "相对收益" },
+    status: { extremeFear: "极度恐惧", fear: "恐惧", neutral: "中立", greed: "贪婪", extremeGreed: "极度贪婪" },
+    rankingTitle: "🔥 实时市场热度", topGreed: "贪婪排行榜 Top 5", topFear: "恐惧排行榜 Top 5"
   }
 };
 
@@ -40,15 +57,14 @@ export default function GreedDashboard() {
   const [qqqIndex, setQqqIndex] = useState<string>('로딩 중...');
   const [spyIndex, setSpyIndex] = useState<string>('로딩 중...');
   
-  // 💡 카운터 및 공유 상태 추가
+  // 상태 관리: 방문자 수, 공유 팝업
   const [visitors, setVisitors] = useState({ today: '...', total: '...' });
   const [isShareOpen, setIsShareOpen] = useState(false);
 
-  // 🚀 1. 진짜 일일/누적 방문자 카운터 (매일 00시 리셋 적용)
+  // 🚀 1. 일일/누적 방문자 카운터 (매일 00시 자동 리셋)
   useEffect(() => {
     const fetchVisitors = async () => {
       try {
-        // 한국 시간 기준 오늘 날짜 (예: "20260323")
         const todayStr = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).replace(/[^0-9]/g, '');
 
         const [totalRes, todayRes] = await Promise.all([
@@ -67,23 +83,25 @@ export default function GreedDashboard() {
     fetchVisitors();
   }, []);
 
-  // 🚀 2. QQQ, SPY 지수 실시간 호출 (에러 방어 강화)
+  // 🚀 2. QQQ, SPY 지수 호출 (원래 구글 시트 API로 복구)
   useEffect(() => {
     const fetchMarketIndices = async () => {
       try {
         const [resQqq, resSpy] = await Promise.all([
-          fetch('/api/market?ticker=QQQ'),
-          fetch('/api/market?ticker=SPY')
+          fetch('/api/stock?ticker=QQQ'), 
+          fetch('/api/stock?ticker=SPY')
         ]);
         
         if (resQqq.ok) {
           const j = await resQqq.json();
-          setQqqIndex(String(j.score || '50'));
+          const finalQqq = Array.isArray(j) ? j[0] : j;
+          setQqqIndex(finalQqq && finalQqq.score !== -1 ? String(finalQqq.score) : '데이터 없음');
         } else { setQqqIndex('데이터 없음'); }
         
         if (resSpy.ok) {
           const j = await resSpy.json();
-          setSpyIndex(String(j.score || '50'));
+          const finalSpy = Array.isArray(j) ? j[0] : j;
+          setSpyIndex(finalSpy && finalSpy.score !== -1 ? String(finalSpy.score) : '데이터 없음');
         } else { setSpyIndex('데이터 없음'); }
         
       } catch (e) { setQqqIndex('오류'); setSpyIndex('오류'); }
@@ -91,7 +109,7 @@ export default function GreedDashboard() {
     fetchMarketIndices();
   }, []);
 
-  // 🚀 3. 공유하기 기능 로직
+  // 🚀 3. 공유하기 기능
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     alert("사이트 주소가 복사되었습니다!\n원하는 곳에 붙여넣기(Ctrl+V) 하세요.");
@@ -199,7 +217,7 @@ export default function GreedDashboard() {
     <main className="min-h-screen bg-[#0a0f1c] text-slate-100 p-4 md:p-10 font-sans relative overflow-hidden">
       <div className="max-w-7xl mx-auto relative z-10">
         
-        {/* 🚀 헤더: 방문자 카운터 및 메뉴 */}
+        {/* 🚀 헤더: 방문자 카운터 및 5개국어, 공유하기 선택 */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-8 relative">
           
           <div className="absolute -top-10 left-0 flex items-center gap-4 bg-slate-900/60 px-4 py-1.5 rounded-full border border-slate-800/50 backdrop-blur-md shadow-sm">
@@ -222,10 +240,10 @@ export default function GreedDashboard() {
             </h1>
             
             <select value={lang} onChange={(e) => setLang(e.target.value)} className="bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors">
-              <option value="ko">🇰🇷 KOR</option><option value="en">🇺🇸 ENG</option>
+              <option value="ko">🇰🇷 KOR</option><option value="en">🇺🇸 ENG</option><option value="es">🇪🇸 ESP</option><option value="ja">🇯🇵 JPN</option><option value="zh">🇨🇳 CHN</option>
             </select>
 
-            {/* 🚀 공유하기 메뉴 추가 */}
+            {/* 공유하기 드롭다운 메뉴 */}
             <div className="relative">
               <button 
                 onClick={() => setIsShareOpen(!isShareOpen)} 
