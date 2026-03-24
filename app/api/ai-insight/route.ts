@@ -1,43 +1,64 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export async function POST(request: Request) {
+export const dynamic = 'force-dynamic';
+export const revalidate = 60; // 💡 60초 캐싱 (트웰브 데이터 무료 한도 초과 방지용)
+
+// 🔑 트웰브 데이터 API 키
+const API_KEY = 'bcbdedd688014fc0816fcc0be79c541a';
+
+// 🎯 1. 기존 RSI 계산 함수 (유지)
+function calculateRSI(prices: number[]) {
+  if (prices.length < 2) return 50;
+  let gains = 0, losses = 0;
+  for (let i = 1; i < prices.length; i++) {
+    const diff = prices[i] - prices[i - 1];
+    if (diff > 0) gains += diff;
+    else losses -= diff;
+  }
+  if (losses === 0) return 100;
+  const rs = gains / losses;
+  return Math.round(100 - (100 / (1 + rs)));
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const ticker = searchParams.get('ticker')?.toUpperCase();
+
+  if (!ticker) return NextResponse.json({ error: '티커가 필요합니다.' }, { status: 400 });
+
   try {
-    const { ticker, indicators, lang } = await request.json();
-    const apiKey = process.env.GEMINI_API_KEY;
+    // 🚀 트웰브 데이터 정식 API 호출 (최근 30일 일봉 데이터 요청)
+    const url = `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=30&apikey=${API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
 
-    if (!apiKey) {
-      return NextResponse.json({ insight: "API Key 미설정 (.env.local 확인)" });
+    // 트웰브 데이터 자체 에러 처리 (예: 잘못된 티커 등)
+    if (data.status === "error") {
+      throw new Error(data.message);
     }
 
-    // 1. 💡 [핵심 개선] API 버전을 'v1'으로 강제 고정합니다. (v1beta의 404 에러 회피)
-    const genAI = new GoogleGenerativeAI(apiKey);
+    if (!data.values || data.values.length === 0) {
+      throw new Error("데이터를 불러올 수 없습니다.");
+    }
 
-    // 2. 모델을 불러올 때 가장 표준적인 이름을 사용합니다.
-    const model = genAI.getGenerativeModel(
-      { model: "gemini-1.5-flash" },
-      { apiVersion: 'v1' } // 👈 이 부분이 404 에러를 해결하는 마법의 코드입니다.
-    );
+    // 💡 중요: 트웰브 데이터는 최신 날짜가 먼저 오므로(내림차순), 
+    // RSI 계산을 위해 과거부터 오도록 배열을 뒤집어줍니다(.reverse())
+    const closePrices = data.values.map((item: any) => parseFloat(item.close)).reverse();
+    const score = calculateRSI(closePrices);
 
-    const prompt = `
-      당신은 20년 경력의 수석 주식 전략가입니다. 
-      아래 종목(${ticker})의 지표를 분석하여 전문가 의견 5줄을 작성하세요.
-      - 데이터: 모멘텀(${indicators.momentum}), RSI(${indicators.rsi}), 공매도(${indicators.short_risk})
-      - 반드시 ${lang === 'ko' ? '한국어' : '영어'}로 답변하세요.
-    `;
-
-    // 3. 실행 및 응답 추출
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
-    return NextResponse.json({ insight: text });
+    return NextResponse.json({ ticker, score }, {
+      headers: {
+        // Vercel 서버에 60초 동안 점수 기억 (트웰브 데이터 호출 최소화)
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30'
+      }
+    });
 
   } catch (error: any) {
-    console.error("❌ Gemini API 최종 에러:", error);
-    
-    // 만약 1.5-flash가 정말 안 된다면, 구형 모델인 gemini-pro로 한 번 더 시도해볼 수 있습니다.
-    return NextResponse.json({ 
-      insight: `분석 실패: 구글 서버가 모델을 찾을 수 없습니다. (에러: ${error.message})` 
+    console.error(`[${ticker}] 트웰브 API 에러:`, error.message);
+    return NextResponse.json({ ticker, score: 50 }, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30'
+      }
     });
   }
 }
