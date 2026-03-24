@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import yahooFinance from 'yahoo-finance2'; // 야후 파이낸스 예비 엔진
 
 export const dynamic = 'force-dynamic';
 
-// 🔥 질문자님이 확인해주신 40자리 진짜 키 전체를 그대로 적용했습니다!
-const FINNHUB_API_KEY = 'd7113c1r01ql6rg0v7l0d7113c1r01ql6rg0v7lg';
+// 🔑 메인 엔진: 트웰브 데이터 API 키
+const TWELVE_API_KEY = 'bcbdedd688014fc0816fcc0be79c541a';
 
+// 🎯 정확도 100% 진짜 RSI 계산 함수
 function calculateRSI(prices: number[]) {
   if (!prices || prices.length < 2) return 50;
   let gains = 0, losses = 0;
@@ -24,31 +26,51 @@ export async function GET(request: Request) {
 
   if (!ticker) return NextResponse.json({ error: '티커가 필요합니다.' }, { status: 400 });
 
-  try {
-    const to = Math.floor(Date.now() / 1000); 
-    const from = to - (45 * 24 * 60 * 60); 
+  let score = 50;
 
-    const url = `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`;
+  try {
+    // 🚀 [엔진 1] 트웰브 데이터 가동 (가장 빠르고 정확함)
+    const url = `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=30&apikey=${TWELVE_API_KEY}`;
     const response = await fetch(url);
     const data = await response.json();
 
-    // 💡 디버깅용: 핀허브에서 키 오류 등의 에러를 주면 이유를 뱉어냅니다.
-    if (data.error) {
-       return NextResponse.json({ ticker, score: 50, reason: `핀허브 거절: ${data.error}` });
+    if (data.status === "ok" && data.values && data.values.length > 0) {
+      // 트웰브는 최신 날짜가 먼저 오므로 배열을 뒤집어줍니다
+      const closePrices = data.values.map((item: any) => parseFloat(item.close)).reverse();
+      score = calculateRSI(closePrices);
+      
+      return NextResponse.json({ ticker, score, source: "TwelveData" }, {
+        headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60' }
+      });
+    } else {
+      throw new Error(data.message || "트웰브 한도 초과");
     }
-
-    if (data.s !== "ok" || !data.c || data.c.length === 0) {
-      return NextResponse.json({ ticker, score: 50, reason: "데이터 없음 (휴장일 또는 잘못된 티커)" });
-    }
-
-    const closePrices = data.c;
-    const score = calculateRSI(closePrices);
-
-    return NextResponse.json({ ticker, score }, {
-      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60' }
-    });
 
   } catch (error: any) {
-    return NextResponse.json({ ticker, score: 50, reason: error.message });
+    console.warn(`[${ticker}] 트웰브 엔진 지침. 야후 파이낸스 예비 엔진 가동!`);
+    
+    // 🚀 [엔진 2] 트웰브가 막히면 야후 파이낸스 자동 가동 (무제한 방어)
+    try {
+      const period1 = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const historical = await yahooFinance.historical(ticker, {
+        period1: period1,
+        interval: '1d',
+      }) as any[];
+
+      if (historical && historical.length > 0) {
+        // 야후는 과거부터 오므로 뒤집을 필요 없음
+        const closePrices = historical.map((data: any) => data.close).filter(Boolean);
+        score = calculateRSI(closePrices);
+        
+        return NextResponse.json({ ticker, score, source: "Yahoo" }, {
+          headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=60' } // 성공 시 2분간 서버 기억
+        });
+      }
+      throw new Error("야후 데이터 없음");
+
+    } catch (yahooError: any) {
+      console.error(`[${ticker}] 두 엔진 모두 실패:`, yahooError.message);
+      return NextResponse.json({ ticker, score: 50, reason: "수집 실패" });
+    }
   }
 }
