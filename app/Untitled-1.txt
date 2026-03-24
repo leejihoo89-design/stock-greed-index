@@ -1,86 +1,72 @@
 """
-진단 v9 - 매수/매도 버튼 hwnd + 종류 콤보박스 hwnd 정확히 찾기
+진단 v11 - 매수/매도 버튼 구조 덤프 (uia 백엔드)
 2100 주문창이 열린 상태에서 실행하세요.
 """
 import time
-import win32gui
-import win32api
-import win32con
+from pywinauto import Application
 
-print("3초 후 스캔...")
+print("3초 후 시작...")
 time.sleep(3)
 
-KIWOOM_MAIN_TITLE = "영웅문Global"
-main_hwnd = win32gui.FindWindow(None, KIWOOM_MAIN_TITLE)
+try:
+    app = Application(backend="uia").connect(title="영웅문Global")
+    dlg = app.window(title="영웅문Global")
 
-win2100 = None
-def find_2100(hwnd, _):
-    global win2100
-    try:
-        if "[2100]" in win32gui.GetWindowText(hwnd) and "Afx:" in win32gui.GetClassName(hwnd):
-            win2100 = hwnd
-    except: pass
-win32gui.EnumChildWindows(main_hwnd, find_2100, None)
+    # 2100 서브창 찾기
+    win2100 = None
+    for w in dlg.descendants(control_type="Window"):
+        if "[2100]" in w.window_text():
+            win2100 = w
+            print(f"2100창: '{w.window_text()}'")
+            break
 
-if not win2100:
-    print("[ERROR] 2100창 없음"); input(); exit()
+    if not win2100:
+        print("[ERROR] 2100창 못 찾음")
+        input(); exit()
 
-win2100_rect = win32gui.GetWindowRect(win2100)
-base_left, base_top = win2100_rect[0], win2100_rect[1]
-print(f"2100창 base=({base_left},{base_top})")
+    # 매수/매도/정정취소/환전 관련 컨트롤 덤프
+    print("\n[매수/매도/정정취소/환전 관련 컨트롤]")
+    print("-" * 70)
+    for c in win2100.descendants():
+        try:
+            txt = c.window_text().strip()
+            if txt in ["매수", "매도", "정정취소", "환전", "수", "도"]:
+                print(f"TEXT     : '{txt}'")
+                print(f"CLASS    : {c.friendly_class_name()}")
+                print(f"CTRL_TYPE: {getattr(c.element_info, 'control_type', None)}")
+                print(f"AUTO_ID  : {getattr(c.element_info, 'automation_id', None)}")
+                print(f"RECT     : {c.rectangle()}")
+                # 상태 확인
+                try:
+                    print(f"ENABLED  : {c.is_enabled()}")
+                    print(f"VISIBLE  : {c.is_visible()}")
+                except: pass
+                # Toggle 상태
+                try:
+                    state = c.iface_toggle.CurrentToggleState
+                    print(f"TOGGLE   : {state}")
+                except: pass
+                # Selection 상태
+                try:
+                    sel = c.iface_selection_item.CurrentIsSelected
+                    print(f"SELECTED : {sel}")
+                except: pass
+                print("-" * 70)
+        except Exception:
+            pass
 
-# 모든 컨트롤 수집
-all_ctrls = []
-def cb(hwnd, _):
-    try:
-        cls  = win32gui.GetClassName(hwnd)
-        text = win32gui.GetWindowText(hwnd).strip()
-        rect = win32gui.GetWindowRect(hwnd)
-        vis  = win32gui.IsWindowVisible(hwnd)
-        cid  = win32api.GetWindowLong(hwnd, win32con.GWL_ID)
-        if vis and rect[0] > 0 and rect[1] > 0:
-            all_ctrls.append((rect[1], rect[0], cls, hwnd, text, rect, cid))
-    except: pass
-win32gui.EnumChildWindows(win2100, cb, None)
-all_ctrls.sort()
+    # 매수(F9) 버튼 상태도 확인 (탭 전환 검증용)
+    print("\n[주문실행 버튼 - 탭 전환 검증용]")
+    for c in win2100.descendants():
+        try:
+            txt = c.window_text().strip()
+            if "F9" in txt or "F12" in txt or txt in ["매수(F9)", "매도(F12)"]:
+                print(f"TEXT: '{txt}' / CLASS: {c.friendly_class_name()} / RECT: {c.rectangle()}")
+        except Exception:
+            pass
 
-# 버튼 출력
-print("\n[Button 목록]")
-for top,left,cls,hwnd,text,rect,cid in all_ctrls:
-    if cls == "Button" and text:
-        print(f"  hwnd={hwnd:#010x} ctrl_id={cid:<8} text='{text}' offset=(+{left-base_left},+{top-base_top})")
+except Exception as e:
+    print(f"오류: {e}")
+    import traceback; traceback.print_exc()
 
-# 콤보박스 출력 (있는 경우)
-print("\n[ComboBox 목록]")
-for top,left,cls,hwnd,text,rect,cid in all_ctrls:
-    if "Combo" in cls or "combo" in cls:
-        print(f"  hwnd={hwnd:#010x} ctrl_id={cid:<8} class={cls} text='{text}' offset=(+{left-base_left},+{top-base_top})")
-
-# AfxWnd (커스텀 콤보 포함) 중 종류 위치 근처
-print("\n[AfxWnd110 - 종류 위치 근처 (offset top 100~120)]")
-for top,left,cls,hwnd,text,rect,cid in all_ctrls:
-    off_top = top - base_top
-    if "AfxWnd" in cls and 85 <= off_top <= 130:
-        print(f"  hwnd={hwnd:#010x} ctrl_id={cid:<8} class={cls} text='{text}' offset=(+{left-base_left},+{off_top})")
-
-# ★ 매수/도 탭 근처 버튼 (offset top 80~120)
-print("\n[탭 근처 버튼 (offset top 80~120)]")
-for top,left,cls,hwnd,text,rect,cid in all_ctrls:
-    off_top = top - base_top
-    if cls == "Button" and 80 <= off_top <= 120:
-        print(f"  hwnd={hwnd:#010x} ctrl_id={cid:<8} text='{text}' offset=(+{left-base_left},+{off_top})")
-
-# ★ WM_LBUTTONCLICK 테스트 - '수' 버튼에 직접 메시지 전송
-print("\n\n'수'(매수) 버튼 hwnd를 입력하면 직접 클릭 테스트합니다.")
-val = input("hwnd (예: 0x00161596, 건너뛰려면 Enter): ").strip()
-if val:
-    try:
-        test_hwnd = int(val, 16)
-        win32api.PostMessage(test_hwnd, win32con.WM_LBUTTONDOWN, 0, 0)
-        time.sleep(0.1)
-        win32api.PostMessage(test_hwnd, win32con.WM_LBUTTONUP, 0, 0)
-        print(f"클릭 메시지 전송 완료 → 매수 탭이 선택됐나요?")
-    except Exception as e:
-        print(f"오류: {e}")
-
-input("Enter로 종료...")
+input("\nEnter로 종료...")
