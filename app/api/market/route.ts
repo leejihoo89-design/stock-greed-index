@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// 🔥 API 키가 2번 복사된 것을 20자리 정상 키로 수정했습니다!
-const FINNHUB_API_KEY = 'd7113c1r01ql6rg0v7l0';
+// 🔥 질문자님이 확인해주신 40자리 진짜 키 전체를 그대로 적용했습니다!
+const FINNHUB_API_KEY = 'd7113c1r01ql6rg0v7l0d7113c1r01ql6rg0v7lg';
 
 function calculateRSI(prices: number[]) {
   if (!prices || prices.length < 2) return 50;
