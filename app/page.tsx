@@ -12,18 +12,46 @@ const koreanStockMap: Record<string, string> = {
   "LG에너지솔루션": "373220", "엔비디아": "NVDA", "테슬라": "TSLA", "애플": "AAPL", "마이크로소프트": "MSFT"
 };
 
+// ✅ 다국어 번역 데이터 완벽 복원 및 확장
 const translations: any = {
   ko: { 
     title: "GLOBAL GREED INDEX", search: "종목명 입력 (예: TSLA, IONQ 과 같이 티커명 입력)", loading: "실시간 데이터 조회 중", aiText: "AI가 실제 시장 데이터를 연산하고 있습니다...", welcome: "환영합니다!", welcomeDesc: "우측 상단 검색창에 분석을 원하는 종목을 입력해주세요.", wait: "대기 중...", fear: "공포", greed: "탐욕", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "실시간 일봉 차트", news: "실시간 주요 뉴스", error: "❌ 존재하지 않거나 분석 불가한 종목입니다.",
     metrics: { momentum: "모멘텀 (추세)", rsi: "RSI (상대강도)", supply: "메이저 수급", sentiment: "시장 심리", volatility: "변동성 (위험도)", short_risk: "공매도 리스크", relative_gain: "상대적 수익률" },
     status: { extremeFear: "극심한 공포", fear: "공포", neutral: "중립", greed: "탐욕", extremeGreed: "극심한 탐욕" },
     rankingTitle: "🔥 실시간 시장 온도 (검색 데이터 기반)", topGreed: "탐욕 랭킹 Top 5", topFear: "공포 랭킹 Top 5"
+  },
+  en: { 
+    title: "GLOBAL GREED INDEX", search: "Enter ticker (e.g. TSLA)", loading: "Fetching Live Data", aiText: "AI is processing real market data...", welcome: "Welcome!", welcomeDesc: "Enter a ticker in the search bar to begin.", wait: "Waiting...", fear: "FEAR", greed: "GREED", insight: "Data Insight", core: "7-Core Metrics", chart: "LIVE DAILY CHART", news: "Live Latest News", error: "❌ Ticker not found or invalid.",
+    metrics: { momentum: "Momentum", rsi: "RSI Strength", supply: "Major Supply", sentiment: "Sentiment", volatility: "Volatility", short_risk: "Short Risk", relative_gain: "Relative Gain" },
+    status: { extremeFear: "Extreme Fear", fear: "Fear", neutral: "Neutral", greed: "Greed", extremeGreed: "Extreme Greed" },
+    rankingTitle: "🔥 Live Market Temperature", topGreed: "Top 5 Greed", topFear: "Top 5 Fear"
+  },
+  es: {
+    title: "GLOBAL GREED INDEX", search: "Ingrese el ticker (ej. TSLA)", loading: "Obteniendo datos en vivo", aiText: "La IA está procesando datos del mercado...", welcome: "¡Bienvenido!", welcomeDesc: "Ingrese un ticker en la barra de búsqueda.", wait: "Esperando...", fear: "MIEDO", greed: "CODICIA", insight: "Análisis de Datos", core: "7 Métricas Clave", chart: "Gráfico Diario en Vivo", news: "Últimas Noticias", error: "❌ Ticker no encontrado.",
+    metrics: { momentum: "Impulso", rsi: "Fuerza RSI", supply: "Oferta Mayor", sentiment: "Sentimiento", volatility: "Volatilidad", short_risk: "Riesgo en Corto", relative_gain: "Ganancia Relativa" },
+    status: { extremeFear: "Miedo Extremo", fear: "Miedo", neutral: "Neutral", greed: "Codicia", extremeGreed: "Codicia Extrema" },
+    rankingTitle: "🔥 Temperatura del Mercado", topGreed: "Top 5 Codicia", topFear: "Top 5 Miedo"
+  },
+  ja: {
+    title: "GLOBAL GREED INDEX", search: "ティッカーを入力 (例: TSLA)", loading: "ライブデータを取得中", aiText: "AIが市場データを処理しています...", welcome: "ようこそ！", welcomeDesc: "検索バーにティッカーを入力してください。", wait: "待機中...", fear: "恐怖", greed: "強欲", insight: "データ分析", core: "7つの主要指標", chart: "ライブ日足チャート", news: "最新ニュース", error: "❌ 見つからないか無効な銘柄です。",
+    metrics: { momentum: "モメンタム", rsi: "RSI強度", supply: "主要需給", sentiment: "市場心理", volatility: "ボラティリティ", short_risk: "空売りリスク", relative_gain: "相対収益率" },
+    status: { extremeFear: "極度の恐怖", fear: "恐怖", neutral: "中立", greed: "強欲", extremeGreed: "極度の強欲" },
+    rankingTitle: "🔥 ライブ市場温度", topGreed: "強欲トップ5", topFear: "恐怖トップ5"
+  },
+  zh: {
+    title: "GLOBAL GREED INDEX", search: "输入股票代码 (如: TSLA)", loading: "正在获取实时数据", aiText: "AI正在处理市场数据...", welcome: "欢迎！", welcomeDesc: "请在搜索栏中输入股票代码。", wait: "等待中...", fear: "恐惧", greed: "贪婪", insight: "数据分析", core: "7大核心指标", chart: "实时日线图", news: "最新实时新闻", error: "❌ 股票代码未找到或无效。",
+    metrics: { momentum: "动量 (趋势)", rsi: "RSI强度", supply: "主力资金", sentiment: "市场情绪", volatility: "波动率 (风险)", short_risk: "做空风险", relative_gain: "相对收益" },
+    status: { extremeFear: "极度恐惧", fear: "恐惧", neutral: "中立", greed: "贪婪", extremeGreed: "极度贪婪" },
+    rankingTitle: "🔥 实时市场温度", topGreed: "贪婪榜 Top 5", topFear: "恐惧榜 Top 5"
   }
 };
 
 export default function GreedDashboard() {
   const [lang, setLang] = useState('ko');
-  const t = translations['ko']; 
+  
+  // ✅ 상태에 따라 실시간으로 언어 텍스트가 바뀌도록 수정
+  const t = translations[lang] || translations['ko']; 
+  
   const [stocks, setStocks] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentStock, setCurrentStock] = useState<any>(null);
@@ -104,7 +132,7 @@ export default function GreedDashboard() {
       } catch (e) { setNews([]); }
     };
     fetchNews();
-  }, [currentStock?.name, lang]);
+  }, [currentStock?.name, lang, t.welcome]);
 
   // 4. 검색 핸들러 (유지)
   const handleSearch = async (e: React.FormEvent) => {
@@ -134,6 +162,7 @@ export default function GreedDashboard() {
     else if (s >= 25) { status = t.status.fear; color = "text-red-400"; }
     else { status = t.status.extremeFear; color = "text-red-600"; }
     
+    // 한국어 기준 통찰 메시지 (언어별 디테일 메시지는 필요시 추가 번역)
     let detail = m.rsi > 70 ? "현재 RSI 지표상 과매수 구간에 진입하여 단기 조정을 경계해야 하며," : m.rsi < 30 ? "RSI가 과매도 상태로 기술적 반등 가능성이 열려 있는 구간이며," : "차트 흐름이 안정적인 중립 궤도 내에서 움직이고 있으며,";
     detail += m.momentum > 60 ? " 강력한 상승 모멘텀이 시세를 견인하고 있으나" : m.momentum < 40 ? " 하락 압력이 우세하여 보수적인 접근이 필요하나" : " 적절한 추세 지속성을 유지하고 있으나";
     detail += m.short_risk > 70 ? " 높은 공매도 리스크가 상존하므로 수급 변화에 주의하십시오." : " 수급 및 공매도 상황은 비교적 안정적인 편입니다.";
@@ -175,10 +204,22 @@ export default function GreedDashboard() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 mt-2 md:mt-0">
-            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mr-2">
+          {/* ✅ 다국어 변환 드롭다운 박스 복원 */}
+          <div className="flex flex-wrap items-center gap-4 mt-2 md:mt-0">
+            <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
               {t.title}
             </h1>
+            <select 
+              value={lang} 
+              onChange={(e) => setLang(e.target.value)} 
+              className="bg-slate-800/80 text-slate-300 border border-slate-700/50 rounded-xl px-3 py-1.5 text-sm font-bold outline-none cursor-pointer hover:bg-slate-700 transition-colors"
+            >
+              <option value="ko">🇰🇷 KOR</option>
+              <option value="en">🇺🇸 ENG</option>
+              <option value="es">🇪🇸 ESP</option>
+              <option value="ja">🇯🇵 JPN</option>
+              <option value="zh">🇨🇳 CHN</option>
+            </select>
           </div>
           
           <div className="relative w-full md:w-96 flex flex-col items-end mt-4 md:mt-0">
@@ -189,16 +230,13 @@ export default function GreedDashboard() {
           </div>
         </header>
 
-        {/* 시장 지수 UI (유지) */}
-    {/* ✅ 시장 지수 UI (나스닥, 다우 텍스트 및 18px 크기 적용) */}
+        {/* 시장 지수 UI (나스닥, 다우 텍스트 및 18px 크기 적용) */}
         <div className="grid grid-cols-2 gap-6 mb-10">
           <div className="rounded-[2rem] border border-cyan-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center h-36 flex flex-col justify-center items-center">
-            {/* 👇 여기를 수정하시면 됩니다 👇 */}
             <p className="text-[18px] text-cyan-400 font-black mb-1 tracking-widest uppercase">나스닥 지수(QQQ)</p>
             <p className="text-6xl font-black text-emerald-400">{qqqIndex}</p>
           </div>
           <div className="rounded-[2rem] border border-purple-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center h-36 flex flex-col justify-center items-center">
-            {/* 👇 여기를 수정하시면 됩니다 👇 */}
             <p className="text-[18px] text-purple-400 font-black mb-1 tracking-widest uppercase">다우 지수(S&P 500 지수)</p>
             <p className="text-6xl font-black text-emerald-400">{spyIndex}</p>
           </div>
@@ -216,7 +254,6 @@ export default function GreedDashboard() {
               <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:col-span-2 flex flex-col gap-6">
                 <div className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl relative">
                   <div className="text-center mb-10">
-                    {/* ✅ 종목명 위에 20px 크기로 "종목 탐욕 지수" 추가 완료 */}
                     <p className="text-[20px] text-cyan-400 font-bold mb-2">종목 탐욕 지수</p>
                     <h2 className="text-5xl font-black tracking-tight mb-2">{currentStock?.name}</h2>
                     <p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • {currentStock?.time || "Real-time"}</p>
@@ -225,10 +262,10 @@ export default function GreedDashboard() {
                   <div className="relative w-full max-w-sm mx-auto mb-8">
                     <GaugeComponent value={currentStock?.score || 50} arc={{ width: 0.15, padding: 0.01, subArcs: [{ limit: 25, color: '#ef4444' }, { limit: 45, color: '#f97316' }, { limit: 55, color: '#94a3b8' }, { limit: 75, color: '#22c55e' }, { limit: 100, color: '#10b981' }] }} pointer={{ type: "blob", color: '#fff' }} labels={{ valueLabel: { formatTextValue: (v) => v.toString(), style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } } }} />
                     
-                    {/* ✅ 게이지 바 아래에 16px 크기로 좌측 공포, 우측 탐욕 추가 완료 */}
                     <div className="flex justify-between w-full px-4 mt-2">
-                      <span className="text-[16px] font-bold text-red-500">공포(FEAR)</span>
-                      <span className="text-[16px] font-bold text-emerald-500">탐욕(GREED)</span>
+                      {/* ✅ 게이지 바 하단 텍스트도 언어에 맞게 변환 적용 */}
+                      <span className="text-[16px] font-bold text-red-500">{t.fear}</span>
+                      <span className="text-[16px] font-bold text-emerald-500">{t.greed}</span>
                     </div>
                   </div>
                   
@@ -241,7 +278,6 @@ export default function GreedDashboard() {
                   </div>
                 </div>
 
-                {/* 🚀 [보강 2] 차트가 undefined로 나오는 문제 방지 (key 추가로 강제 리렌더링) */}
                 {currentStock?.name && currentStock.name !== t.welcome && (
                   <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-6 h-[450px] flex flex-col">
                     <div className="flex items-center gap-2 mb-4 text-emerald-400 font-bold text-sm"><LineChart size={18}/> {t.chart}</div>
@@ -257,11 +293,9 @@ export default function GreedDashboard() {
                   <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-cyan-400 uppercase tracking-tighter"><Zap size={18} /> {t.core}</h3>
                   <div className="space-y-6">
                     {metricsInfo.map((m) => {
-                      // 🚀 [보강 3] 핵심 지표가 0으로 나오지 않도록 실시간 currentStock 데이터 바인딩
                       const score = currentStock?.metrics ? currentStock.metrics[m.key] : 0;
                       return (
                         <div key={m.key}>
-                          {/* ✅ 7대 핵심 지표 글자 크기 18px 적용 완료 */}
                           <div className="flex justify-between text-[18px] mb-3 font-bold uppercase text-slate-300">
                             <span className="flex items-center gap-2">{m.icon} {m.label}</span>
                             <span className={score >= 50 ? "text-emerald-400" : "text-red-400"}>{score ? score.toFixed(1) : "0.0"}</span>
