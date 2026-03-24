@@ -83,13 +83,13 @@ export default function GreedDashboard() {
     fetchVisitors();
   }, []);
 
-  // 🚀 2. QQQ, SPY 지수 호출 (원래 구글 시트 API로 복구)
+  // 🚀 2. QQQ, SPY 지수 호출 (market API로 수정 완료!)
   useEffect(() => {
     const fetchMarketIndices = async () => {
       try {
         const [resQqq, resSpy] = await Promise.all([
-          fetch('/api/stock?ticker=QQQ'), 
-          fetch('/api/stock?ticker=SPY')
+          fetch('/api/market?ticker=QQQ'), // ✅ 수정 완료
+          fetch('/api/market?ticker=SPY')  // ✅ 수정 완료
         ]);
         
         if (resQqq.ok) {
@@ -131,7 +131,7 @@ export default function GreedDashboard() {
 
   const loadData = async () => {
     try {
-      const res = await fetch('/api/stock');
+      const res = await fetch('/api/stock'); // 구글 시트 랭킹 연동을 위해 유지
       const data = await res.json();
       if (Array.isArray(data)) setStocks(data);
       return data;
@@ -169,7 +169,8 @@ export default function GreedDashboard() {
     let target = koreanStockMap[searchTerm.trim()] || searchTerm.trim().toUpperCase();
     setIsQuerying(true);
     try {
-      const res = await fetch(`/api/stock?ticker=${target}`, { cache: 'no-store' });
+      // ✅ 검색 시 방어막이 쳐진 market API를 호출하도록 수정 완료!
+      const res = await fetch(`/api/market?ticker=${target}`, { cache: 'no-store' });
       const data = await res.json();
       const final = Array.isArray(data) ? data[0] : data;
       if (final && final.score !== -1) {
