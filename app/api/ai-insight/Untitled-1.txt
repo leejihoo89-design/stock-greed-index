@@ -1,0 +1,122 @@
+"""
+진단 v10 - pywinauto uia/win32 백엔드로 종류 콤보박스 select() 테스트
+2100 주문창이 열린 상태에서 실행하세요.
+"""
+import time
+from pywinauto import Application, Desktop
+from pywinauto.keyboard import send_keys
+
+print("3초 후 시작...")
+time.sleep(3)
+
+KIWOOM_MAIN_TITLE = "영웅문Global"
+
+# ── uia 백엔드로 연결 ──────────────────────────────────────────
+print("\n[방법1] uia 백엔드")
+try:
+    app_uia = Application(backend="uia").connect(title=KIWOOM_MAIN_TITLE)
+    main_uia = app_uia.window(title=KIWOOM_MAIN_TITLE)
+
+    # 2100 서브창 찾기
+    win2100 = None
+    for w in main_uia.descendants(control_type="Window"):
+        if "[2100]" in w.window_text():
+            win2100 = w
+            print(f"  2100창 발견: '{w.window_text()}'")
+            break
+
+    if win2100:
+        # 모든 자식 컨트롤 출력
+        print("\n  [uia 자식 컨트롤 - ComboBox/Edit/List 위주]")
+        for ctrl in win2100.descendants():
+            try:
+                ct   = ctrl.control_type()
+                name = ctrl.window_text()
+                aid  = ctrl.automation_id()
+                if ct in ("ComboBox", "Edit", "List", "ListItem", "Button"):
+                    print(f"    type={ct:<12} auto_id={aid:<10} text='{name}'")
+            except Exception:
+                pass
+
+        # ComboBox 찾아서 select 시도
+        print("\n  [ComboBox select('LOC') 시도]")
+        combos = win2100.descendants(control_type="ComboBox")
+        print(f"  ComboBox 개수: {len(combos)}")
+        for idx, cb in enumerate(combos):
+            try:
+                print(f"    [{idx}] text='{cb.window_text()}' auto_id='{cb.automation_id()}'")
+                # 패턴 확인
+                try:
+                    cb.expand()
+                    print(f"         → expand() 성공!")
+                    time.sleep(0.5)
+                    # 항목 목록
+                    items = cb.descendants(control_type="ListItem")
+                    for item in items:
+                        print(f"           ListItem: '{item.window_text()}'")
+                    cb.collapse()
+                except Exception as e2:
+                    print(f"         → expand() 실패: {e2}")
+
+                # select 시도
+                try:
+                    cb.select("LOC")
+                    print(f"         → select('LOC') 성공!")
+                    time.sleep(0.5)
+                except Exception as e3:
+                    print(f"         → select('LOC') 실패: {e3}")
+            except Exception as e:
+                print(f"    [{idx}] 오류: {e}")
+    else:
+        print("  2100창 못 찾음")
+
+except Exception as e:
+    print(f"  uia 연결 실패: {e}")
+
+# ── win32 백엔드로 연결 ────────────────────────────────────────
+print("\n[방법2] win32 백엔드")
+try:
+    app_w32 = Application(backend="win32").connect(title=KIWOOM_MAIN_TITLE)
+    main_w32 = app_w32.window(title=KIWOOM_MAIN_TITLE)
+
+    # 2100 서브창
+    win2100_w32 = None
+    for w in main_w32.children():
+        try:
+            if "[2100]" in w.window_text():
+                win2100_w32 = w
+                print(f"  2100창 발견(win32): '{w.window_text()}'")
+                break
+        except Exception:
+            pass
+
+    if win2100_w32:
+        print("\n  [win32 자식 컨트롤]")
+        for ctrl in win2100_w32.descendants():
+            try:
+                cls  = ctrl.class_name()
+                text = ctrl.window_text()
+                cid  = ctrl.control_id()
+                if "combo" in cls.lower() or "edit" in cls.lower():
+                    print(f"    class={cls:<20} ctrl_id={cid:<8} text='{text}'")
+            except Exception:
+                pass
+
+        # ComboBox select 시도
+        combos_w32 = [c for c in win2100_w32.descendants()
+                      if "combo" in c.class_name().lower()]
+        print(f"\n  win32 ComboBox 개수: {len(combos_w32)}")
+        for idx, cb in enumerate(combos_w32):
+            try:
+                print(f"    [{idx}] class='{cb.class_name()}' text='{cb.window_text()}'")
+                cb.select("LOC")
+                print(f"         → select('LOC') 성공!")
+            except Exception as e:
+                print(f"         → select('LOC') 실패: {e}")
+    else:
+        print("  2100창 못 찾음 (win32)")
+
+except Exception as e:
+    print(f"  win32 연결 실패: {e}")
+
+input("\nEnter로 종료...")
