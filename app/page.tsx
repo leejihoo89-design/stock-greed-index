@@ -192,10 +192,12 @@ export default function GreedDashboard() {
         {/* 시장 지수 UI (유지) */}
         <div className="grid grid-cols-2 gap-6 mb-10">
           <div className="rounded-[2rem] border border-cyan-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center h-36 flex flex-col justify-center items-center">
+            {/* ✅ QQQ 지수 18px 적용 완료 */}
             <p className="text-[18px] text-cyan-400 font-black mb-1 tracking-widest uppercase">QQQ Greed Index</p>
             <p className="text-6xl font-black text-emerald-400">{qqqIndex}</p>
           </div>
           <div className="rounded-[2rem] border border-purple-500/30 bg-gradient-to-br from-slate-900/80 to-slate-800/40 p-6 text-center h-36 flex flex-col justify-center items-center">
+            {/* ✅ SPY 지수 18px 적용 완료 */}
             <p className="text-[18px] text-purple-400 font-black mb-1 tracking-widest uppercase">SPY Greed Index</p>
             <p className="text-6xl font-black text-emerald-400">{spyIndex}</p>
           </div>
@@ -212,23 +214,22 @@ export default function GreedDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="lg:col-span-2 flex flex-col gap-6">
                 <div className="bg-slate-900/50 border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl relative">
-                <div className="text-center mb-10">
-  {/* 👇 종목명 위에 20px 크기로 "종목 탐욕 지수" 추가 👇 */}
-  <p className="text-[20px] text-cyan-400 font-bold mb-2">종목 탐욕 지수</p>
-  
-  <h2 className="text-5xl font-black tracking-tight mb-2">{currentStock?.name}</h2>
-  <p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • {currentStock?.time || "Real-time"}</p>
-</div>
+                  <div className="text-center mb-10">
+                    {/* ✅ 종목명 위에 20px 크기로 "종목 탐욕 지수" 추가 완료 */}
+                    <p className="text-[20px] text-cyan-400 font-bold mb-2">종목 탐욕 지수</p>
+                    <h2 className="text-5xl font-black tracking-tight mb-2">{currentStock?.name}</h2>
+                    <p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • {currentStock?.time || "Real-time"}</p>
+                  </div>
 
-<div className="relative w-full max-w-sm mx-auto mb-8">
-  <GaugeComponent value={currentStock?.score || 50} arc={{ width: 0.15, padding: 0.01, subArcs: [{ limit: 25, color: '#ef4444' }, { limit: 45, color: '#f97316' }, { limit: 55, color: '#94a3b8' }, { limit: 75, color: '#22c55e' }, { limit: 100, color: '#10b981' }] }} pointer={{ type: "blob", color: '#fff' }} labels={{ valueLabel: { formatTextValue: (v) => v.toString(), style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } } }} />
-  
-  {/* 👇 게이지 바 아래에 16px 크기로 좌측 공포, 우측 탐욕 추가 👇 */}
-  <div className="flex justify-between w-full px-4 mt-2">
-    <span className="text-[16px] font-bold text-red-500">공포(FEAR)</span>
-    <span className="text-[16px] font-bold text-emerald-500">탐욕(GREED)</span>
-  </div>
-</div>
+                  <div className="relative w-full max-w-sm mx-auto mb-8">
+                    <GaugeComponent value={currentStock?.score || 50} arc={{ width: 0.15, padding: 0.01, subArcs: [{ limit: 25, color: '#ef4444' }, { limit: 45, color: '#f97316' }, { limit: 55, color: '#94a3b8' }, { limit: 75, color: '#22c55e' }, { limit: 100, color: '#10b981' }] }} pointer={{ type: "blob", color: '#fff' }} labels={{ valueLabel: { formatTextValue: (v) => v.toString(), style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } } }} />
+                    
+                    {/* ✅ 게이지 바 아래에 16px 크기로 좌측 공포, 우측 탐욕 추가 완료 */}
+                    <div className="flex justify-between w-full px-4 mt-2">
+                      <span className="text-[16px] font-bold text-red-500">공포(FEAR)</span>
+                      <span className="text-[16px] font-bold text-emerald-500">탐욕(GREED)</span>
+                    </div>
+                  </div>
                   
                   <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/30">
                     <div className="flex items-center gap-2 mb-3 text-cyan-400 font-bold text-sm"><BarChart3 size={16}/> {t.insight}</div>
@@ -259,8 +260,9 @@ export default function GreedDashboard() {
                       const score = currentStock?.metrics ? currentStock.metrics[m.key] : 0;
                       return (
                         <div key={m.key}>
-                          <div className="flex justify-between text-[16px] mb-2 font-bold uppercase text-slate-400">
-                            <span className="flex items-center gap-1.5">{m.icon} {m.label}</span>
+                          {/* ✅ 7대 핵심 지표 글자 크기 18px 적용 완료 */}
+                          <div className="flex justify-between text-[18px] mb-3 font-bold uppercase text-slate-300">
+                            <span className="flex items-center gap-2">{m.icon} {m.label}</span>
                             <span className={score >= 50 ? "text-emerald-400" : "text-red-400"}>{score ? score.toFixed(1) : "0.0"}</span>
                           </div>
                           <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
