@@ -260,55 +260,51 @@ export default function GreedDashboard() {
                   </div>
 
    <div className="relative w-full max-w-sm mx-auto mb-8">
-  {/* 1. 게이지와 숫자를 겹치게 만들기 위한 상대 위치(relative) 박스 */}
-  <div className="relative">
-    <GaugeComponent 
-      value={currentStock?.score || 50} 
-      arc={{ 
-        width: 0.25, 
-        padding: 0.02, 
-        cornerRadius: 0, 
-        subArcs: [
-          { limit: 25, color: '#ef4444' }, 
-          { limit: 45, color: '#f97316' }, 
-          { limit: 55, color: '#94a3b8' }, 
-          { limit: 75, color: '#22c55e' }, 
-          { limit: 100, color: '#10b981' }
-        ] 
-      }} 
-      pointer={{ 
-        type: "needle", 
-        length: 0.7, 
-        width: 15, 
-        color: '#ffffff', 
-        elastic: true 
-      }} 
-      labels={{ 
-        /* ✅ 기존 차트 안의 숫자는 안 보이게 숨깁니다 */
-        valueLabel: { 
-          formatTextValue: () => "", 
-          style: { fontSize: '0px' } 
-        },
-        tickLabels: {
-          type: "outer", 
-          ticks: [{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }],
-          defaultTickValueConfig: { style: { fontSize: '12px', fill: '#94a3b8' } }
-        }
-      }} 
-    />
-    
-    {/* ✅ 2. HTML을 이용해 바늘 '위'에 숫자를 강제로 띄웁니다 (그림자 추가로 가독성 UP) */}
-    <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 pointer-events-none pb-2">
-      <span 
-        className="text-[55px] font-black text-white tracking-tighter" 
-        style={{ textShadow: "0px 4px 15px rgba(0,0,0,0.6)" }}
-      >
-        {currentStock?.score || 50}
-      </span>
-    </div>
+<div className="relative w-full max-w-sm mx-auto mb-8">
+  {/* 1. 게이지 차트 (내부 숫자는 숨김) */}
+  <GaugeComponent 
+    value={currentStock?.score || 50} 
+    arc={{ 
+      width: 0.25, 
+      padding: 0.02, 
+      cornerRadius: 0, 
+      subArcs: [
+        { limit: 25, color: '#ef4444' }, 
+        { limit: 45, color: '#f97316' }, 
+        { limit: 55, color: '#94a3b8' }, 
+        { limit: 75, color: '#22c55e' }, 
+        { limit: 100, color: '#10b981' }
+      ] 
+    }} 
+    pointer={{ 
+      type: "needle", 
+      length: 0.7, 
+      width: 15, 
+      color: '#ffffff', 
+      elastic: true 
+    }} 
+    labels={{ 
+      valueLabel: { formatTextValue: () => "", style: { fontSize: '0px' } }, /* 차트 자체 숫자는 안 보이게 처리 */
+      tickLabels: {
+        type: "outer", 
+        ticks: [{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }],
+        defaultTickValueConfig: { style: { fontSize: '12px', fill: '#94a3b8' } }
+      }
+    }} 
+  />
+  
+  {/* ✅ 2. 바늘과 겹치지 않도록 차트 '바로 아래'에 숫자를 배치합니다 */}
+  <div className="text-center -mt-2 mb-4">
+    <span 
+      className="text-[65px] font-black text-white tracking-tighter" 
+      style={{ textShadow: "0px 4px 15px rgba(0,0,0,0.4)" }}
+    >
+      {currentStock?.score || 50}
+    </span>
   </div>
   
-  <div className="flex justify-between w-full px-4 mt-4">
+  {/* 3. 공포 / 탐욕 텍스트 */}
+  <div className="flex justify-between w-full px-4">
     <span className="text-[16px] font-bold text-red-500">{t.fear}</span>
     <span className="text-[16px] font-bold text-emerald-500">{t.greed}</span>
   </div>
