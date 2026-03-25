@@ -12,7 +12,6 @@ const koreanStockMap: Record<string, string> = {
   "LG에너지솔루션": "373220", "엔비디아": "NVDA", "테슬라": "TSLA", "애플": "AAPL", "마이크로소프트": "MSFT"
 };
 
-// ✅ 다국어 번역 데이터
 const translations: any = {
   ko: { 
     title: "GLOBAL GREED INDEX", search: "종목명 입력 (예: TSLA, IONQ 과 같이 티커명 입력)", loading: "실시간 데이터 조회 중", aiText: "AI가 실제 시장 데이터를 연산하고 있습니다...", welcome: "환영합니다!", welcomeDesc: "우측 상단 검색창에 분석을 원하는 종목을 입력해주세요.", wait: "대기 중...", fear: "공포", greed: "탐욕", insight: "데이터 통합 분석", core: "7대 핵심 지표", chart: "실시간 일봉 차트", news: "실시간 주요 뉴스", error: "❌ 존재하지 않거나 분석 불가한 종목입니다.",
@@ -49,7 +48,6 @@ const translations: any = {
 export default function GreedDashboard() {
   const [lang, setLang] = useState('ko');
   const t = translations[lang] || translations['ko']; 
-  
   const [stocks, setStocks] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentStock, setCurrentStock] = useState<any>(null);
@@ -59,6 +57,7 @@ export default function GreedDashboard() {
   const [qqqIndex, setQqqIndex] = useState<string>('로딩 중...');
   const [spyIndex, setSpyIndex] = useState<string>('로딩 중...');
   const [visitors, setVisitors] = useState({ today: '...', total: '...' });
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useEffect(() => {
     const fetchVisitors = async () => {
@@ -150,11 +149,13 @@ export default function GreedDashboard() {
     const s = currentStock.score;
     const m = currentStock.metrics || {};
     let status = "", color = "";
+    
+    // ✅ 5구간 텍스트 및 컬러 매핑 (점수에 따라 5단계로 자동 변경됩니다)
     if (s >= 75) { status = t.status.extremeGreed; color = "text-emerald-400"; }
     else if (s >= 55) { status = t.status.greed; color = "text-emerald-500/80"; }
     else if (s >= 45) { status = t.status.neutral; color = "text-slate-300"; }
-    else if (s >= 25) { status = t.status.fear; color = "text-red-400"; }
-    else { status = t.status.extremeFear; color = "text-red-600"; }
+    else if (s >= 25) { status = t.status.fear; color = "text-orange-400"; } // 공포 색상을 디자인에 맞춰 오렌지 계열로 조정
+    else { status = t.status.extremeFear; color = "text-red-500"; }
     
     let detail = m.rsi > 70 ? "현재 RSI 지표상 과매수 구간에 진입하여 단기 조정을 경계해야 하며," : m.rsi < 30 ? "RSI가 과매도 상태로 기술적 반등 가능성이 열려 있는 구간이며," : "차트 흐름이 안정적인 중립 궤도 내에서 움직이고 있으며,";
     detail += m.momentum > 60 ? " 강력한 상승 모멘텀이 시세를 견인하고 있으나" : m.momentum < 40 ? " 하락 압력이 우세하여 보수적인 접근이 필요하나" : " 적절한 추세 지속성을 유지하고 있으나";
@@ -254,68 +255,80 @@ export default function GreedDashboard() {
                     <p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • {currentStock?.time || "Real-time"}</p>
                   </div>
                   
-                  {/* ✅ 수정된 게이지 바 (초기 디자인 복구 + 우측 5단계 범례 추가) */}
+                  {/* ✅ 수정된 게이지 바 (바늘형 + 5구간 블록 + 내부 텍스트 겹침 완벽 해결) */}
                   <div className="flex flex-col md:flex-row items-center justify-center gap-10 mb-8">
                     
-                    {/* 게이지 차트 (왼쪽) */}
+                    {/* 게이지 차트 영역 */}
                     <div className="relative w-full max-w-sm flex-1">
                       <GaugeComponent 
                         value={currentStock?.score || 50} 
                         arc={{ 
-                          width: 0.15, 
-                          padding: 0.01, 
+                          width: 0.2, 
+                          padding: 0.02, // ✅ 구역을 띠가 아닌 블록으로 명확하게 나눔
+                          cornerRadius: 0, 
                           subArcs: [
-                            { limit: 25, color: '#ef4444' }, // 극심한 공포
-                            { limit: 45, color: '#f97316' }, // 공포
-                            { limit: 55, color: '#94a3b8' }, // 중립
-                            { limit: 75, color: '#22c55e' }, // 탐욕
-                            { limit: 100, color: '#10b981' }  // 극심한 탐욕
+                            { limit: 25, color: '#ef4444' }, // 극심한 공포 (빨강)
+                            { limit: 45, color: '#f97316' }, // 공포 (주황)
+                            { limit: 55, color: '#94a3b8' }, // 중립 (회색)
+                            { limit: 75, color: '#22c55e' }, // 탐욕 (연두)
+                            { limit: 100, color: '#10b981' } // 극심한 탐욕 (초록)
                           ] 
                         }} 
                         pointer={{ 
-                          type: "blob", // ✅ 바늘 삭제, 처음의 동그란 점(blob)으로 복구
-                          color: '#fff' 
+                          type: "needle", 
+                          length: 0.65, 
+                          width: 15, 
+                          color: '#ffffff', 
+                          elastic: true 
                         }} 
                         labels={{ 
-                          valueLabel: { 
-                            formatTextValue: (v) => v.toString(), 
-                            style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } // ✅ 숫자 중앙 배치 복구
-                          },
+                          valueLabel: { formatTextValue: () => "", style: { fontSize: '0px' } }, // 기본 숫자 숨김
                           tickLabels: {
                             type: "outer",
                             ticks: [{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }],
-                            defaultTickValueConfig: { style: { fontSize: '10px', fill: '#64748b' } }
+                            defaultTickValueConfig: { style: { fontSize: '11px', fill: '#94a3b8' } }
                           }
                         }} 
                       />
-                      {/* 원래 위치의 공포/탐욕 텍스트 복구 */}
+                      
+                      {/* ✅ 숫자를 강제로 바늘보다 위로 띄워서 게이지 안쪽에 예쁘게 겹치게 만듦 */}
+                      <div className="absolute bottom-[8%] left-1/2 transform -translate-x-1/2 pointer-events-none flex flex-col items-center">
+                        <span 
+                          className="text-[60px] font-black text-white leading-none" 
+                          style={{ textShadow: "0px 4px 15px rgba(0,0,0,0.8)" }} // 그림자 효과로 바늘 위에서 선명하게 보임
+                        >
+                          {currentStock?.score || 50}
+                        </span>
+                      </div>
+                      
+                      {/* 게이지 하단 공포/탐욕 텍스트 */}
                       <div className="flex justify-between w-full px-4 mt-2">
                         <span className="text-[16px] font-bold text-red-500">{t.fear}</span>
                         <span className="text-[16px] font-bold text-emerald-500">{t.greed}</span>
                       </div>
                     </div>
 
-                    {/* 5단계 색상 표기 범례 (오른쪽) */}
+                    {/* ✅ 5단계 색상 표기 범례 (오른쪽) */}
                     <div className="flex flex-col gap-4 bg-slate-800/40 p-6 rounded-2xl border border-slate-700/50 min-w-[180px]">
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 bg-[#ef4444] rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
-                        <span className="text-sm font-bold text-slate-300">극심한 공포</span>
+                        <span className="text-sm font-bold text-slate-300">{t.status.extremeFear}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 bg-[#f97316] rounded-sm shadow-[0_0_8px_rgba(249,115,22,0.5)]"></div>
-                        <span className="text-sm font-bold text-slate-300">공포</span>
+                        <span className="text-sm font-bold text-slate-300">{t.status.fear}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 bg-[#94a3b8] rounded-sm shadow-[0_0_8px_rgba(148,163,184,0.5)]"></div>
-                        <span className="text-sm font-bold text-slate-300">중립</span>
+                        <span className="text-sm font-bold text-slate-300">{t.status.neutral}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 bg-[#22c55e] rounded-sm shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                        <span className="text-sm font-bold text-slate-300">탐욕</span>
+                        <span className="text-sm font-bold text-slate-300">{t.status.greed}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-4 h-4 bg-[#10b981] rounded-sm shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                        <span className="text-sm font-bold text-slate-300">극심한 탐욕</span>
+                        <span className="text-sm font-bold text-slate-300">{t.status.extremeGreed}</span>
                       </div>
                     </div>
 
@@ -325,6 +338,7 @@ export default function GreedDashboard() {
                     <div className="flex items-center gap-2 mb-3 text-cyan-400 font-bold text-sm"><BarChart3 size={16}/> {t.insight}</div>
                     {(() => {
                       const ins = getDynamicInsight();
+                      // ✅ 5단계에 맞게 텍스트 출력됨 (ins.status가 위에서 5단계로 세분화됨)
                       return <p className="leading-relaxed font-medium text-slate-200">종합 {ins.score}pts <span className={`font-black mx-2 ${ins.color}`}>[{ins.status}]</span> : {ins.detail}</p>;
                     })()}
                   </div>
@@ -380,7 +394,7 @@ export default function GreedDashboard() {
           )}
         </AnimatePresence>
 
-        {/* 랭킹 UI */}
+        {/* 랭킹 UI 복구 */}
         {!isQuerying && validStocks.length > 0 && (
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8 bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-8 backdrop-blur-md shadow-xl">
             <h3 className="text-xl font-bold mb-8 text-center text-slate-200">{t.rankingTitle}</h3>
