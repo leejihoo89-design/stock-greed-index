@@ -260,7 +260,48 @@ export default function GreedDashboard() {
                   </div>
 
                   <div className="relative w-full max-w-sm mx-auto mb-8">
-                    <GaugeComponent value={currentStock?.score || 50} arc={{ width: 0.15, padding: 0.01, subArcs: [{ limit: 25, color: '#ef4444' }, { limit: 45, color: '#f97316' }, { limit: 55, color: '#94a3b8' }, { limit: 75, color: '#22c55e' }, { limit: 100, color: '#10b981' }] }} pointer={{ type: "blob", color: '#fff' }} labels={{ valueLabel: { formatTextValue: (v) => v.toString(), style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } } }} />
+                    <GaugeComponent 
+  value={currentStock?.score || 50} 
+  arc={{ 
+    width: 0.25, /* 게이지 두께를 이미지처럼 조금 더 두껍게 */
+    padding: 0.02, /* 구간 사이의 여백 */
+    cornerRadius: 0, /* 끝부분을 둥글지 않고 각지게 설정 */
+    subArcs: [
+      { limit: 25, color: '#ef4444' }, /* 0~25: 극심한 공포 */
+      { limit: 45, color: '#f97316' }, /* 25~45: 공포 */
+      { limit: 55, color: '#94a3b8' }, /* 45~55: 중립 */
+      { limit: 75, color: '#22c55e' }, /* 55~75: 탐욕 */
+      { limit: 100, color: '#10b981' } /* 75~100: 극심한 탐욕 */
+    ] 
+  }} 
+  pointer={{ 
+    type: "needle", /* 동그라미(blob) 대신 바늘(needle) 형태로 변경 */
+    length: 0.7,    /* 바늘 길이 */
+    width: 15,      /* 바늘 두께 */
+    color: '#ffffff', /* 다크모드에 어울리게 흰색 바늘로 설정 */
+    elastic: true   /* 바늘이 움직일 때 통통 튀는 애니메이션 */
+  }} 
+  labels={{ 
+    valueLabel: { 
+      formatTextValue: (v) => v.toString(), 
+      style: { fill: '#fff', fontSize: '45px', fontWeight: '900', textShadow: 'none' } 
+    },
+    /* 👇 이미지처럼 0, 25, 50, 75, 100 숫자 눈금 추가 👇 */
+    tickLabels: {
+      type: "outer", /* 눈금을 게이지 바깥쪽에 배치 */
+      ticks: [
+        { value: 0 },
+        { value: 25 },
+        { value: 50 },
+        { value: 75 },
+        { value: 100 }
+      ],
+      defaultTickValueConfig: {
+        style: { fontSize: '12px', fill: '#94a3b8' } /* 눈금 글자색 (회색) */
+      }
+    }
+  }} 
+/>
                     
                     <div className="flex justify-between w-full px-4 mt-2">
                       {/* ✅ 게이지 바 하단 텍스트도 언어에 맞게 변환 적용 */}
