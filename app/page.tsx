@@ -59,9 +59,7 @@ export default function GreedDashboard() {
   const [qqqIndex, setQqqIndex] = useState<string>('로딩 중...');
   const [spyIndex, setSpyIndex] = useState<string>('로딩 중...');
   const [visitors, setVisitors] = useState({ today: '...', total: '...' });
-  const [isShareOpen, setIsShareOpen] = useState(false);
 
-  // 1. 방문자 카운터
   useEffect(() => {
     const fetchVisitors = async () => {
       try {
@@ -78,7 +76,6 @@ export default function GreedDashboard() {
     fetchVisitors();
   }, []);
 
-  // 2. QQQ, SPY 지수
   useEffect(() => {
     const fetchMarketIndices = async () => {
       try {
@@ -99,7 +96,6 @@ export default function GreedDashboard() {
     fetchMarketIndices();
   }, []);
 
-  // 3. 초기 로드 (TSLA)
   useEffect(() => {
     const initLoad = async () => {
       setIsQuerying(true);
@@ -119,7 +115,6 @@ export default function GreedDashboard() {
     initLoad();
   }, []);
 
-  // 4. 뉴스 호출
   useEffect(() => {
     const fetchNews = async () => {
       if (!currentStock?.name || currentStock?.name === t.welcome) return;
@@ -131,7 +126,6 @@ export default function GreedDashboard() {
     fetchNews();
   }, [currentStock?.name, lang, t.welcome]);
 
-  // 5. 검색 핸들러
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm || isQuerying) return;
@@ -260,52 +254,71 @@ export default function GreedDashboard() {
                     <p className="text-slate-500 font-mono text-xs italic">Precision Analytics v1.0 • {currentStock?.time || "Real-time"}</p>
                   </div>
                   
-                  {/* ✅ 게이지 바늘형 + 숫자 분리 */}
-                  <div className="relative w-full max-w-sm mx-auto mb-8">
-                    <GaugeComponent 
-                      value={currentStock?.score || 50} 
-                      arc={{ 
-                        width: 0.25, 
-                        padding: 0.02, 
-                        cornerRadius: 0, 
-                        subArcs: [
-                          { limit: 25, color: '#ef4444' }, 
-                          { limit: 45, color: '#f97316' }, 
-                          { limit: 55, color: '#94a3b8' }, 
-                          { limit: 75, color: '#22c55e' }, 
-                          { limit: 100, color: '#10b981' }
-                        ] 
-                      }} 
-                      pointer={{ 
-                        type: "needle", 
-                        length: 0.7, 
-                        width: 15, 
-                        color: '#ffffff', 
-                        elastic: true 
-                      }} 
-                      labels={{ 
-                        valueLabel: { formatTextValue: () => "", style: { fontSize: '0px' } }, 
-                        tickLabels: {
-                          type: "outer", 
-                          ticks: [{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }],
-                          defaultTickValueConfig: { style: { fontSize: '12px', fill: '#94a3b8' } }
-                        }
-                      }} 
-                    />
+                  {/* ✅ 수정된 게이지 바 (초기 디자인 복구 + 우측 5단계 범례 추가) */}
+                  <div className="flex flex-col md:flex-row items-center justify-center gap-10 mb-8">
                     
-                    <div className="text-center -mt-2 mb-4">
-                      <span 
-                        className="text-[65px] font-black text-white tracking-tighter" 
-                        style={{ textShadow: "0px 4px 15px rgba(0,0,0,0.4)" }}
-                      >
-                        {currentStock?.score || 50}
-                      </span>
+                    {/* 게이지 차트 (왼쪽) */}
+                    <div className="relative w-full max-w-sm flex-1">
+                      <GaugeComponent 
+                        value={currentStock?.score || 50} 
+                        arc={{ 
+                          width: 0.15, 
+                          padding: 0.01, 
+                          subArcs: [
+                            { limit: 25, color: '#ef4444' }, // 극심한 공포
+                            { limit: 45, color: '#f97316' }, // 공포
+                            { limit: 55, color: '#94a3b8' }, // 중립
+                            { limit: 75, color: '#22c55e' }, // 탐욕
+                            { limit: 100, color: '#10b981' }  // 극심한 탐욕
+                          ] 
+                        }} 
+                        pointer={{ 
+                          type: "blob", // ✅ 바늘 삭제, 처음의 동그란 점(blob)으로 복구
+                          color: '#fff' 
+                        }} 
+                        labels={{ 
+                          valueLabel: { 
+                            formatTextValue: (v) => v.toString(), 
+                            style: { fill: '#fff', fontSize: '45px', fontWeight: '900' } // ✅ 숫자 중앙 배치 복구
+                          },
+                          tickLabels: {
+                            type: "outer",
+                            ticks: [{ value: 0 }, { value: 25 }, { value: 50 }, { value: 75 }, { value: 100 }],
+                            defaultTickValueConfig: { style: { fontSize: '10px', fill: '#64748b' } }
+                          }
+                        }} 
+                      />
+                      {/* 원래 위치의 공포/탐욕 텍스트 복구 */}
+                      <div className="flex justify-between w-full px-4 mt-2">
+                        <span className="text-[16px] font-bold text-red-500">{t.fear}</span>
+                        <span className="text-[16px] font-bold text-emerald-500">{t.greed}</span>
+                      </div>
                     </div>
-                    
-                    <div className="flex justify-between w-full px-4">
-                      <span className="text-[16px] font-bold text-red-500">{t.fear}</span>
-                      <span className="text-[16px] font-bold text-emerald-500">{t.greed}</span>
+
+                    {/* 5단계 색상 표기 범례 (오른쪽) */}
+                    <div className="flex flex-col gap-4 bg-slate-800/40 p-6 rounded-2xl border border-slate-700/50 min-w-[180px]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 bg-[#ef4444] rounded-sm shadow-[0_0_8px_rgba(239,68,68,0.5)]"></div>
+                        <span className="text-sm font-bold text-slate-300">극심한 공포</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 bg-[#f97316] rounded-sm shadow-[0_0_8px_rgba(249,115,22,0.5)]"></div>
+                        <span className="text-sm font-bold text-slate-300">공포</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 bg-[#94a3b8] rounded-sm shadow-[0_0_8px_rgba(148,163,184,0.5)]"></div>
+                        <span className="text-sm font-bold text-slate-300">중립</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 bg-[#22c55e] rounded-sm shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
+                        <span className="text-sm font-bold text-slate-300">탐욕</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-4 h-4 bg-[#10b981] rounded-sm shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        <span className="text-sm font-bold text-slate-300">극심한 탐욕</span>
+                      </div>
                     </div>
+
                   </div>
                   
                   <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/30">
@@ -367,7 +380,7 @@ export default function GreedDashboard() {
           )}
         </AnimatePresence>
 
-        {/* ✅ 누락되었던 랭킹 UI 복원 (isQuerying이 false이고 validStocks가 있을 때 표시) */}
+        {/* 랭킹 UI */}
         {!isQuerying && validStocks.length > 0 && (
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mt-8 bg-slate-900/60 border border-slate-800 rounded-[2.5rem] p-8 backdrop-blur-md shadow-xl">
             <h3 className="text-xl font-bold mb-8 text-center text-slate-200">{t.rankingTitle}</h3>
